@@ -626,7 +626,6 @@ int OP_SW      = 43;
 int *OPCODES; // array of strings representing MIPS opcodes
 
 int FCT_NOP     = 0;
-int FCT_NOP     = 0;
 int FCT_SLL	= 0;
 int FCT_SRL	= 2;
 int FCT_SLLV	= 4;
@@ -6641,4 +6640,4 @@ int main(int argc, int *argv) {
     }
 
     return 0;
-}g
+}
