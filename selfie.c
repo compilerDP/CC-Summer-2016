@@ -592,6 +592,7 @@ int getOpcode(int instruction);
 int getRS(int instruction);
 int getRT(int instruction);
 int getRD(int instruction);
+int getShamt(int instruction);
 int getFunction(int instruction);
 int getImmediate(int instruction);
 int getInstrIndex(int instruction);
@@ -624,8 +625,7 @@ int OP_SW      = 43;
     
 int *OPCODES; // array of strings representing MIPS opcodes
 
-//int FCT_NOP     = 0;
-int FCT_SLL	= 0;
+int FCT_NOP     = 0;	// FCT_SLL
 int FCT_SRL	= 2;
 int FCT_SLLV	= 4;
 int FCT_SRLV	= 6;
@@ -647,6 +647,7 @@ int opcode      = 0;
 int rs          = 0;
 int rt          = 0;
 int rd          = 0;
+int shamt	= 0;
 int immediate   = 0;
 int function    = 0;
 int instr_index = 0;
@@ -667,8 +668,7 @@ void initDecoder() {
 
     FUNCTIONS = malloc(43 * SIZEOFINTSTAR);
 
-//    *(FUNCTIONS + FCT_NOP)     = (int) "nop";
-    *(FUNCTIONS + FCT_SLL)     = (int) "sll";
+    *(FUNCTIONS + FCT_NOP)     = (int) "sll";
     *(FUNCTIONS + FCT_SRL)     = (int) "srl";
     *(FUNCTIONS + FCT_SLLV)     = (int) "sllv";
     *(FUNCTIONS + FCT_SRLV)     = (int) "srlv";
@@ -3686,7 +3686,7 @@ void printRegister(int reg) {
 // 32 bit
 //
 // +------+-----+-----+-----+-----+------+
-// |opcode|  rs |  rt |  rd |00000|fction|
+// |opcode|  rs |  rt |  rd |shamt|fction|
 // +------+-----+-----+-----+-----+------+
 //    6      5     5     5     5     6
 int encodeRFormat(int opcode, int rs, int rt, int rd, int function) {
@@ -3694,8 +3694,9 @@ int encodeRFormat(int opcode, int rs, int rt, int rd, int function) {
     // assert: 0 <= rs < 2^5
     // assert: 0 <= rt < 2^5
     // assert: 0 <= rd < 2^5
+    // assert: 0 <= shamt < 2^5
     // assert: 0 <= function < 2^6
-    return leftShift(leftShift(leftShift(leftShift(opcode, 5) + rs, 5) + rt, 5) + rd, 11) + function;
+    return leftShift(leftShift(leftShift(leftShift(leftShift(opcode, 5) + rs, 5) + rt, 5) + rd, 5) + shamt, 6) + function;
 }
 
 // -----------------------------------------------------------------
@@ -3744,6 +3745,10 @@ int getRT(int instruction) {
 
 int getRD(int instruction) {
     return rightShift(leftShift(instruction, 16), 27);
+}
+
+int getShamt(int instruction) {
+    return rightShift(leftShift(instruction, 21), 27);
 }
 
 int getFunction(int instruction) {
@@ -3795,13 +3800,14 @@ void decode() {
 // 32 bit
 //
 // +------+-----+-----+-----+-----+------+
-// |opcode|  rs |  rt |  rd |00000|fction|
+// |opcode|  rs |  rt |  rd |shamt|fction|
 // +------+-----+-----+-----+-----+------+
 //    6      5     5     5     5     6
 void decodeRFormat() {
     rs          = getRS(ir);
     rt          = getRT(ir);
     rd          = getRD(ir);
+    shamt	= getShamt(ir);
     immediate   = 0;
     function    = getFunction(ir);
     instr_index = 0;
@@ -5012,7 +5018,8 @@ void fct_syscall() {
 
 void fct_nop() {
     if (debug) {
-        printFunction(function);
+        //printFunction(function);
+        print((int*) "nop");
         println();
     }
 
@@ -5028,7 +5035,7 @@ void fct_sll() {
         print((int*) ",");
         printRegister(rt);
         print((int*) ",");
-        printRegister(rs);	// shamt?
+	print((int*) "shamt");
         if (interpret) {
             print((int*) ": ");
             printRegister(rd);
@@ -5039,14 +5046,14 @@ void fct_sll() {
             print((int*) "=");
             print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
             print((int*) ",");
-            printRegister(rs);
-            print((int*) "=");
-            print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
+	    print((int*) "shamt");
+	    print((int*) "=");
+            print(itoa(shamt, string_buffer, 10, 0, 0));
         }
     }
 
     if (interpret) {
-        *(registers+rd) =  leftShift(*(registers+rt), *(registers+rs));
+        *(registers+rd) =  leftShift(*(registers+rt), shamt);
 
         pc = pc + WORDSIZE;
     }
@@ -5070,7 +5077,7 @@ void fct_srl() {
         print((int*) ",");
         printRegister(rt);
         print((int*) ",");
-        printRegister(rs);	// shamt?
+        print((int*) "shamt");
         if (interpret) {
             print((int*) ": ");
             printRegister(rd);
@@ -5081,14 +5088,14 @@ void fct_srl() {
             print((int*) "=");
             print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
             print((int*) ",");
-            printRegister(rs);
+            print((int*) "shamt");
             print((int*) "=");
-            print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
+            print(itoa(shamt, string_buffer, 10, 0, 0));
         }
     }
 
     if (interpret) {
-        *(registers+rd) =  rightShift(*(registers+rt), *(registers+rs));
+        *(registers+rd) =  rightShift(*(registers+rt), shamt);
 
         pc = pc + WORDSIZE;
     }
@@ -5884,10 +5891,8 @@ void execute() {
     }
 
     if (opcode == OP_SPECIAL) {
-//        if (function == FCT_NOP)
-//           fct_nop();
-        if (function == FCT_SLL)
-            fct_sll();
+        if (function == FCT_NOP) // FCT_SLL
+           fct_sll();
         else if (function == FCT_SRL)
             fct_srl();
         else if (function == FCT_SLLV)
