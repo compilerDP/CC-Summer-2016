@@ -596,6 +596,7 @@ int getFunction(int instruction);
 int getImmediate(int instruction);
 int getInstrIndex(int instruction);
 int signExtend(int immediate);
+int getShamt(int instruction);
 
 // -----------------------------------------------------------------
 // ---------------------------- DECODER ----------------------------
@@ -624,9 +625,9 @@ int OP_SW      = 43;
     
 int *OPCODES; // array of strings representing MIPS opcodes
 
-//int FCT_NOP     = 0;
-int FCT_SLL	= 0;
-int FCT_SRL	= 2;
+int FCT_NOP     = 0;
+int FCT_SLL	    = 0;
+int FCT_SRL		= 2;
 int FCT_SLLV	= 4;
 int FCT_SRLV	= 6;
 int FCT_JR      = 8;
@@ -667,7 +668,7 @@ void initDecoder() {
 
     FUNCTIONS = malloc(43 * SIZEOFINTSTAR);
 
-//    *(FUNCTIONS + FCT_NOP)     = (int) "nop";
+    *(FUNCTIONS + FCT_NOP)     = (int) "nop";
     *(FUNCTIONS + FCT_SLL)     = (int) "sll";
     *(FUNCTIONS + FCT_SRL)     = (int) "srl";
     *(FUNCTIONS + FCT_SLLV)     = (int) "sllv";
@@ -3765,7 +3766,9 @@ int signExtend(int immediate) {
     else
         return immediate - twoToThePowerOf(16);
 }
-
+int getShamt(int instruction) {
+    return rightShift(leftShift(instruction, 21), 27);
+}
 // -----------------------------------------------------------------
 // ---------------------------- DECODER ----------------------------
 // -----------------------------------------------------------------
@@ -3802,7 +3805,8 @@ void decodeRFormat() {
     rs          = getRS(ir);
     rt          = getRT(ir);
     rd          = getRD(ir);
-    immediate   = 0;
+   //immediate   = 0;
+    immediate   = getShamt(ir);
     function    = getFunction(ir);
     instr_index = 0;
 }
@@ -5046,7 +5050,7 @@ void fct_sll() {
     }
 
     if (interpret) {
-        *(registers+rd) =  leftShift(*(registers+rt), *(registers+rs));
+        *(registers+rd) =  leftShift(*(registers+rt),   (immediate) );
 
         pc = pc + WORDSIZE;
     }
@@ -5088,7 +5092,7 @@ void fct_srl() {
     }
 
     if (interpret) {
-        *(registers+rd) =  rightShift(*(registers+rt), *(registers+rs));
+        *(registers+rd) =  rightShift(*(registers+rt),   (immediate) );
 
         pc = pc + WORDSIZE;
     }
@@ -5884,8 +5888,8 @@ void execute() {
     }
 
     if (opcode == OP_SPECIAL) {
-//        if (function == FCT_NOP)
-//           fct_nop();
+        if (function == FCT_NOP)
+            fct_nop();
         if (function == FCT_SLL)
             fct_sll();
         else if (function == FCT_SRL)
@@ -6626,7 +6630,7 @@ int main(int argc, int *argv) {
     print((int*)"   This is datTeam Selfie");	// output the name of our team
     println();                                  //D stands for Daniela
     println();                                  //A for Aziz
-						//T for Tarek
+												//T for Tarek
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
         print((int*) ": usage: selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
