@@ -671,8 +671,8 @@ void initDecoder() {
     *(FUNCTIONS + FCT_NOP)     = (int) "nop";
     *(FUNCTIONS + FCT_SLL)     = (int) "sll";
     *(FUNCTIONS + FCT_SRL)     = (int) "srl";
-    *(FUNCTIONS + FCT_SLLV)     = (int) "sllv";
-    *(FUNCTIONS + FCT_SRLV)     = (int) "srlv";
+    *(FUNCTIONS + FCT_SLLV)    = (int) "sllv";
+    *(FUNCTIONS + FCT_SRLV)    = (int) "srlv";
     *(FUNCTIONS + FCT_JR)      = (int) "jr";
     *(FUNCTIONS + FCT_SYSCALL) = (int) "syscall";
     *(FUNCTIONS + FCT_MFHI)    = (int) "mfhi";
@@ -6630,7 +6630,7 @@ int main(int argc, int *argv) {
     print((int*)"   This is datTeam Selfie");	// output the name of our team
     println();                                  //D stands for Daniela
     println();                                  //A for Aziz
-												//T for Tarek
+						//T for Tarek
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
         print((int*) ": usage: selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
