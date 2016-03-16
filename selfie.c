@@ -883,7 +883,7 @@ void initMemory(int bytes) {
 // -----------------------------------------------------------------
 
 void fct_syscall();
-//void fct_nop();
+void fct_nop();
 void fct_sll();
 void fct_srl();
 void fct_sllv();
