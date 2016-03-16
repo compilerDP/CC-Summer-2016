@@ -5084,7 +5084,6 @@ void fct_sll() {
         println();
     }
 }
-
 void fct_srl() {
     if (debug) {
         printFunction(function);
