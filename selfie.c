@@ -38,7 +38,7 @@
 // C* is a tiny Turing-complete subset of C that includes dereferencing
 // (the * operator) but excludes composite data types, bitwise and Boolean
 // operators, and many other features. There are only signed 32-bit
-// integers and pointers as well as character and string literals.
+// integers and 32-bit pointers as well as character and string literals.
 // This choice turns out to be helpful for students to understand the
 // true role of composite data types such as arrays and records.
 // Bitwise operations are implemented in libcstar using signed integer
@@ -1178,24 +1178,31 @@ int twoToThePowerOf(int p) {
 int leftShift(int n, int b) {
     // assert: b >= 0;
 
-    if (b > 30)
-        return 0;
-    else
+    if (b < 31)
         return n * twoToThePowerOf(b);
+    else if (b == 31)
+        return n * twoToThePowerOf(30) * 2;
+    else
+        return 0;
 }
 
 int rightShift(int n, int b) {
     // assert: b >= 0
 
-    if (b > 30)
-        return 0;
-    else if (n >= 0)
-        return n / twoToThePowerOf(b);
-    else
+    if (n >= 0) {
+        if (b < 31)
+            return n / twoToThePowerOf(b);
+        else
+            return 0;
+    } else if (b < 31)
         // works even if n == INT_MIN:
         // shift right n with msb reset and then restore msb
         return ((n + 1) + INT_MAX) / twoToThePowerOf(b) +
             (INT_MAX / twoToThePowerOf(b) + 1);
+    else if (b == 31)
+        return 1;
+    else
+        return 0;
 }
 
 int loadCharacter(int *s, int i) {
