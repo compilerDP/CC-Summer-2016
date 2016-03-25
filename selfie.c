@@ -269,8 +269,8 @@ int SYM_NOTEQ        = 24; // !=
 int SYM_MOD          = 25; // %
 int SYM_CHARACTER    = 26; // character
 int SYM_STRING       = 27; // string
-int SYM_LS           = 28; // <<
-int SYM_RS           = 29; // >>
+int SYM_LLS          = 28; // <<
+int SYM_LRS          = 29; // >>
 
 int *SYMBOLS; // array of strings representing symbols
 
@@ -332,8 +332,8 @@ void initScanner () {
     *(SYMBOLS + SYM_MOD)          = (int) "%";
     *(SYMBOLS + SYM_CHARACTER)    = (int) "character";
     *(SYMBOLS + SYM_STRING)       = (int) "string";
-    *(SYMBOLS + SYM_LS)           = (int) "<<";
-    *(SYMBOLS + SYM_RS)           = (int) ">>";
+    *(SYMBOLS + SYM_LLS)          = (int) "<<";
+    *(SYMBOLS + SYM_LRS)          = (int) ">>";
 
     character = CHAR_EOF;
     symbol    = SYM_EOF;
@@ -430,6 +430,7 @@ int isExpression();
 int isLiteral();
 int isStarOrDivOrModulo();
 int isPlusOrMinus();
+int isLogicalShift();
 int isComparison();
 
 int lookForFactor();
@@ -457,6 +458,7 @@ int  gr_call(int *procedure);
 int  gr_factor();
 int  gr_term();
 int  gr_simpleExpression();
+//int  gr_logicalShift();
 int  gr_expression();
 void gr_while();
 void gr_if();
@@ -630,8 +632,8 @@ int OP_SW      = 43;
 int *OPCODES; // array of strings representing MIPS opcodes
 
 int FCT_NOP     = 0;
-int FCT_SLL	= 0;
-int FCT_SRL	= 2;
+int FCT_SLL 	= 0;
+int FCT_SRL	    = 2;
 int FCT_SLLV	= 4;
 int FCT_SRLV	= 6;
 int FCT_JR      = 8;
@@ -652,7 +654,7 @@ int opcode      = 0;
 int rs          = 0;
 int rt          = 0;
 int rd          = 0;
-int shamt	= 0;
+int shamt   	= 0;
 int immediate   = 0;
 int function    = 0;
 int instr_index = 0;
@@ -1899,6 +1901,11 @@ int getSymbol() {
             getCharacter();
 
             symbol = SYM_LEQ;
+
+        } else if (character == CHAR_LT) {
+            getCharacter();
+
+            symbol = SYM_LLS;
         } else
             symbol = SYM_LT;
 
@@ -1909,7 +1916,12 @@ int getSymbol() {
             getCharacter();
 
             symbol = SYM_GEQ;
-        } else
+
+        } else if (character == CHAR_GT) {
+            getCharacter();
+
+            symbol = SYM_LRS;
+        }  else
             symbol = SYM_GT;
 
     } else if (character == CHAR_EXCLAMATION) {
@@ -2101,6 +2113,15 @@ int isPlusOrMinus() {
         return 1;
     else if (symbol == SYM_PLUS)
         return 1;
+    else
+        return 0;
+}
+
+int isLogicalShift() {
+    if (symbol == SYM_LLS)
+        return 1;
+    else if (symbol == SYM_LRS)
+        return 1; 
     else
         return 0;
 }
