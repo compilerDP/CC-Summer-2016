@@ -458,7 +458,7 @@ int  gr_call(int *procedure);
 int  gr_factor();
 int  gr_term();
 int  gr_simpleExpression();
-//int  gr_logicalShift();
+int  gr_logicalShift();
 int  gr_expression();
 void gr_while();
 void gr_if();
@@ -590,7 +590,7 @@ void initRegister() {
 // ---------------------------- ENCODER ----------------------------
 // -----------------------------------------------------------------
 
-int encodeRFormat(int opcode, int rs, int rt, int rd, int function);
+int encodeRFormat(int opcode, int rs, int rt, int rd, int shamt, int function);
 int encodeIFormat(int opcode, int rs, int rt, int immediate);
 int encodeJFormat(int opcode, int instr_index);
 
@@ -2813,6 +2813,84 @@ int gr_simpleExpression() {
     return ltype;
 }
 
+int gr_logicalShift() {
+//    int sign;
+//    int ltype;
+//    int operatorSymbol;
+//    int rtype;
+
+    // assert: n = allocatedTemporaries
+
+    // optional: -
+//    if (symbol == SYM_MINUS) {
+//        sign = 1;
+
+//        mayBeINTMIN = 1;
+//        isINTMIN    = 0;
+
+//        getSymbol();
+
+//        mayBeINTMIN = 0;
+
+//        if (isINTMIN) {
+//            isINTMIN = 0;
+            
+            // avoids 0-INT_MIN overflow when bootstrapping
+            // even though 0-INT_MIN == INT_MIN
+//            sign = 0;
+//        }
+//    } else
+//        sign = 0;
+
+//    ltype = gr_term();
+
+    // assert: allocatedTemporaries == n + 1
+
+//    if (sign) {
+//        if (ltype != INT_T) {
+//            typeWarning(INT_T, ltype);
+
+//            ltype = INT_T;
+//        }
+
+//        emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
+//    }
+
+    // + or -?
+//    while (isPlusOrMinus()) {
+//        operatorSymbol = symbol;
+
+//        getSymbol();
+
+//        rtype = gr_term();
+
+        // assert: allocatedTemporaries == n + 2
+
+//        if (operatorSymbol == SYM_PLUS) {
+//            if (ltype == INTSTAR_T) {
+//                if (rtype == INT_T)
+                    // pointer arithmetic: factor of 2^2 of integer operand
+//                    emitLeftShiftBy(2);
+//            } else if (rtype == INTSTAR_T)
+//                typeWarning(ltype, rtype);
+
+//            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
+
+//        } else if (operatorSymbol == SYM_MINUS) {
+//            if (ltype != rtype)
+//                typeWarning(ltype, rtype);
+
+//            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+//        }
+
+//        tfree(1);
+//    }
+
+    // assert: allocatedTemporaries == n + 1
+
+//    return ltype;
+}
+
 int gr_expression() {
     int ltype;
     int operatorSymbol;
@@ -3722,13 +3800,14 @@ void printRegister(int reg) {
 // |opcode|  rs |  rt |  rd |shamt|fction|
 // +------+-----+-----+-----+-----+------+
 //    6      5     5     5     5     6
-int encodeRFormat(int opcode, int rs, int rt, int rd, int function) {
+int encodeRFormat(int opcode, int rs, int rt, int rd, int shamt, int function) {
     // assert: 0 <= opcode < 2^6
     // assert: 0 <= rs < 2^5
     // assert: 0 <= rt < 2^5
     // assert: 0 <= rd < 2^5
     // assert: 0 <= shamt < 2^5
     // assert: 0 <= function < 2^6
+//    return leftShift(leftShift(leftShift(leftShift(opcode, 5) + rs, 5) + rt, 5) + rd, 11) + function;
     return leftShift(leftShift(leftShift(leftShift(leftShift(opcode, 5) + rs, 5) + rt, 5) + rd, 5) + shamt, 6) + function;
 }
 
@@ -3909,7 +3988,7 @@ void emitInstruction(int instruction) {
 }
 
 void emitRFormat(int opcode, int rs, int rt, int rd, int function) {
-    emitInstruction(encodeRFormat(opcode, rs, rt, rd, function));
+    emitInstruction(encodeRFormat(opcode, rs, rt, rd, 0, function));
 
     if (opcode == OP_SPECIAL) {
         if (function == FCT_JR)
