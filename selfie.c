@@ -2816,7 +2816,6 @@ int gr_simpleExpression() {
 int gr_logicalShift() {
     int ltype;
     int shiftSymbol;
-    int rtype;
 
     // assert: n = allocatedTemporaries
 
@@ -2841,7 +2840,8 @@ int gr_logicalShift() {
 
         // shift register
         else {
-            rtype = gr_simpleExpression();
+            gr_simpleExpression();
+            //int rtype = gr_simpleExpression();
 
             // assert: allocatedTemporaries == n + 2
 
@@ -3777,7 +3777,6 @@ int encodeRFormat(int opcode, int rs, int rt, int rd, int shamt, int function) {
     // assert: 0 <= rd < 2^5
     // assert: 0 <= shamt < 2^5
     // assert: 0 <= function < 2^6
-//    return leftShift(leftShift(leftShift(leftShift(opcode, 5) + rs, 5) + rt, 5) + rd, 11) + function;
     return leftShift(leftShift(leftShift(leftShift(leftShift(opcode, 5) + rs, 5) + rt, 5) + rd, 5) + shamt, 6) + function;
 }
 
