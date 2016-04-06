@@ -6838,8 +6838,8 @@ int testShiftOperatorsTwoPos(){
    //u=20;
    //v=2;
 
-   //RightShiftResult = u >>> v;            commented out so it can be compiled
-   //print((int*) "u >> v = ");              to run this function and detect errors
+   //RightShiftResult = u >>> v;            
+   //print((int*) "u >> v = ");              
    //print(itoa(RightShiftResult, string_buffer, 10, 0, 0));
    //println();
 
