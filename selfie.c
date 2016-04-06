@@ -2830,36 +2830,38 @@ int gr_logicalShift() {
     // assert: allocatedTemporaries == n + 1
 
     // << or >>?
-    if (isLogicalShift()) {
+    while (isLogicalShift()) {
         shiftSymbol = symbol;
 
         getSymbol();
 
-        // shift immediate 
-        if (symbol == SYM_INTEGER) {
+		// shift immediate
+		if (symbol == SYM_INTEGER) {
 
-            if (shiftSymbol == SYM_LLS) 
-                emitRFormat(OP_SPECIAL, currentTemporary(), 0, currentTemporary(), literal, FCT_SLL);
-            else
-                emitRFormat(OP_SPECIAL, currentTemporary(), 0, currentTemporary(), literal, FCT_SRL);
-        }
+			if (shiftSymbol == SYM_LLS) 
+				emitRFormat(OP_SPECIAL, currentTemporary(), 0, currentTemporary(), literal, FCT_SLL);
+			else
+				emitRFormat(OP_SPECIAL, currentTemporary(), 0, currentTemporary(), literal, FCT_SRL);
 
-        // shift register
-        else {
-            gr_simpleExpression();
-            //int rtype = gr_simpleExpression();
+		getSymbol();
 
-            // assert: allocatedTemporaries == n + 2
+		} 
 
-            if (shiftSymbol == SYM_LLS) 
-                emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_SLLV);
+		// shift register
+		else {
 
-            else
-                emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_SRLV);
+			gr_simpleExpression();
 
-            tfree(1);
+		    // assert: allocatedTemporaries == n + 2
 
-        }
+		    if (shiftSymbol == SYM_LLS) 
+		        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_SLLV);
+
+		    else
+		        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_SRLV);
+
+		    tfree(1);
+		}
     }
 
     // assert: allocatedTemporaries == n + 1
@@ -5131,7 +5133,7 @@ void fct_sll() {
    		    print((int*) " ");
     	    printRegister(rd);
         	print((int*) ",");
-       		printRegister(rt);
+       		printRegister(rs);
         	print((int*) ",");
 			print((int*) "shamt");
         	if (interpret) {
@@ -5140,9 +5142,9 @@ void fct_sll() {
             	print((int*) "=");
             	print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
             	print((int*) ",");
-            	printRegister(rt);
+            	printRegister(rs);
             	print((int*) "=");
-            	print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+            	print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
             	print((int*) ",");
 	    		print((int*) "shamt");
 	    		print((int*) "=");
@@ -5151,7 +5153,7 @@ void fct_sll() {
     	}
 
     	if (interpret) {
-        	*(registers+rd) =  leftShift(*(registers+rt), shamt);
+        	*(registers+rd) =  leftShift(*(registers+rs), shamt);
 
         	pc = pc + WORDSIZE;
     	}
@@ -5178,7 +5180,7 @@ void fct_srl() {
         print((int*) " ");
         printRegister(rd);
         print((int*) ",");
-        printRegister(rt);
+        printRegister(rs);
         print((int*) ",");
         print((int*) "shamt");
         if (interpret) {
@@ -5187,9 +5189,9 @@ void fct_srl() {
             print((int*) "=");
             print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
             print((int*) ",");
-            printRegister(rt);
+            printRegister(rs);
             print((int*) "=");
-            print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+            print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
             print((int*) ",");
             print((int*) "shamt");
             print((int*) "=");
@@ -5198,7 +5200,7 @@ void fct_srl() {
     }
 
     if (interpret) {
-        *(registers+rd) =  rightShift(*(registers+rt), shamt);
+        *(registers+rd) =  rightShift(*(registers+rs), shamt);
 
         pc = pc + WORDSIZE;
     }
@@ -5220,27 +5222,27 @@ void fct_sllv() {
         print((int*) " ");
         printRegister(rd);
         print((int*) ",");
-        printRegister(rt);
-        print((int*) ",");
         printRegister(rs);
+        print((int*) ",");
+        printRegister(rt);
         if (interpret) {
             print((int*) ": ");
             printRegister(rd);
             print((int*) "=");
             print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
             print((int*) ",");
-            printRegister(rt);
-            print((int*) "=");
-            print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
-            print((int*) ",");
             printRegister(rs);
             print((int*) "=");
             print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            printRegister(rt);
+            print((int*) "=");
+            print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
         }
     }
 
     if (interpret) {
-        *(registers+rd) =  leftShift(*(registers+rt), *(registers+rs));
+        *(registers+rd) =  leftShift(*(registers+rs), *(registers+rt));
 
         pc = pc + WORDSIZE;
     }
@@ -5262,27 +5264,27 @@ void fct_srlv() {
         print((int*) " ");
         printRegister(rd);
         print((int*) ",");
-        printRegister(rt);
-        print((int*) ",");
         printRegister(rs);
+        print((int*) ",");
+        printRegister(rt);
         if (interpret) {
             print((int*) ": ");
             printRegister(rd);
             print((int*) "=");
             print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
             print((int*) ",");
-            printRegister(rt);
-            print((int*) "=");
-            print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
-            print((int*) ",");
             printRegister(rs);
             print((int*) "=");
             print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            printRegister(rt);
+            print((int*) "=");
+            print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
         }
     }
 
     if (interpret) {
-        *(registers+rd) =  rightShift(*(registers+rt), *(registers+rs));
+        *(registers+rd) =  rightShift(*(registers+rs), *(registers+rt));
 
         pc = pc + WORDSIZE;
     }
@@ -6715,6 +6717,10 @@ int selfie(int argc, int* argv) {
     return 0;
 }
 
+int result;
+int x;
+int y;
+
 int main(int argc, int *argv) {
     initLibrary();
 
@@ -6734,7 +6740,14 @@ int main(int argc, int *argv) {
     print((int*)"   This is datTeam Selfie");	// output the name of our team
     println();                                  //D stands for Daniela
     println();                                  //A for Aziz
-						//T for Tarek
+						                        //T for Tarek
+	x = 8;
+	y = 2;
+    result = x << y;
+    print((int*) "x << y = ");
+    print(itoa(result, string_buffer, 10, 0, 0));
+    println();
+
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
         print((int*) ": usage: selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
