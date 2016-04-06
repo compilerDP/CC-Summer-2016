@@ -2838,6 +2838,7 @@ int gr_logicalShift() {
 		// shift immediate
 		if (symbol == SYM_INTEGER) {
 
+			
 			if (shiftSymbol == SYM_LLS) 
 				emitRFormat(OP_SPECIAL, currentTemporary(), 0, currentTemporary(), literal, FCT_SLL);
 			else
@@ -6812,6 +6813,39 @@ int testShiftOperatorsTwoPos(){
     return 0;
 }    
 
+// commented out so it can be compiled
+
+//int testWrongShiftOperators1(){ //when this function is exeucted it generates Core Dump
+
+	//int LeftShiftResult;
+	//int x;
+	//int y;
+	//int u;
+	//int v;
+	//int RightShiftResult;
+
+    //x = 8;
+	//y = 2;
+    // LeftShiftResult = x <>> y;             
+    // LeftShiftResult = x <<>> y;
+    // LeftShiftResult = x <<->> y;		   
+								              
+   //print((int*) "x << y = ");
+   //print(itoa(LeftShiftResult, string_buffer, 10, 0, 0));
+   //println();
+
+
+   //u=20;
+   //v=2;
+
+   //RightShiftResult = u >>> v;            commented out so it can be compiled
+   //print((int*) "u >> v = ");              to run this function and detect errors
+   //print(itoa(RightShiftResult, string_buffer, 10, 0, 0));
+   //println();
+
+    //return 0;   
+//}    
+
 
 int main(int argc, int *argv) {
     initLibrary();
@@ -6835,6 +6869,8 @@ int main(int argc, int *argv) {
 						                        //T for Tarek
 	testShiftOperatorsOnePos();
 	testShiftOperatorsTwoPos();
+    //testWrongShiftOperators1();
+    
 
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
