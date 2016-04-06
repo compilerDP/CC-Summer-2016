@@ -6716,115 +6716,7 @@ int selfie(int argc, int* argv) {
 
     return 0;
 }
-int testShiftOperatorsOnePos(){
-	
-	int LeftShiftResult;
-	int x;
-	int y;
-	int u;
-	int v;
-	int RightShiftResult;
 
-    x = 1;
-	y = 1;
-	print((int*) "Started Shift Left Test for one Position With 1");
-	println();
-
-
-	while(x <= 128 ){
-    	
-    	LeftShiftResult = x << y;
-
-   		//print((int*) "x << y = ");
-   		print(itoa(LeftShiftResult, string_buffer, 10, 0, 0));
-   		println();
-   		x=x*2;
-   			
-   		
-
-   	}
-   	
-   	print((int*) "Left Shift Test for one Posistion Finished successfully ");
-
-   	println();
-
-   	print((int*) "Started RightShift Test for one Position with 256");
-   	println();
-
-    u=256;
-    v=1;
-   	while(u >= 2){
-    	RightShiftResult = u >> v;
-   	   // print((int*) "u >> v = ");
-    	print(itoa(RightShiftResult, string_buffer, 10, 0, 0));
-    	println();
-    	u=u/2;
-
-    	
-    		
-    }	
-
-    print((int*) "Right Shift Test for one Posistion Finished successfully ");
-    println();
-
-
-   
-
-    return 0;
-}    
-
-
-
-int testShiftOperatorsTwoPos(){
-	
-	int LeftShiftResult;
-	int x;
-	int y;
-	int u;
-	int v;
-	int RightShiftResult;
-
-    x = 1;
-	y = 2;
-	print((int*) "Started Shift Left Test for two Positions With 1");
-	println();
-
-
-	while(x <= 128 ){
-    	
-    	LeftShiftResult = x << y;
-
-   		//print((int*) "x << y = ");
-   		print(itoa(LeftShiftResult, string_buffer, 10, 0, 0));
-   		println();
-   		x=x*4;
-   			
-   		
-
-   	}
-   	
-   	print((int*) "Left Shift Test for two Posistion Finished successfully ");
-
-   	println();
-
-   	print((int*) "Started RightShift Test for two Positions with 256");
-   	println();
-
-    u=256;
-    v=2;
-   	while(u >= 2){
-    	RightShiftResult = u >> v;
-   	    //print((int*) "u >> v = ");
-    	print(itoa(RightShiftResult, string_buffer, 10, 0, 0));
-    	println();
-    	u=u/4;
-    }	
-
-    print((int*) "Right Shift Test for Two Posistions Finished successfully ");
-    println();
-
-    return 0;
-}    
 
 
 int main(int argc, int *argv) {
@@ -6847,8 +6739,7 @@ int main(int argc, int *argv) {
     println();                                  //D stands for Daniela
     println();                                  //A for Aziz
 						                        //T for Tarek
-	testShiftOperatorsOnePos();
-	testShiftOperatorsTwoPos();
+	
 
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
