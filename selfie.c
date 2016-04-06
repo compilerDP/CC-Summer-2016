@@ -2822,6 +2822,7 @@ int gr_simpleExpression() {
 int gr_logicalShift() {
     int ltype;
     int shiftSymbol;
+    int rtype;
 
     // assert: n = allocatedTemporaries
 
@@ -2837,7 +2838,11 @@ int gr_logicalShift() {
 
 		// shift immediate
 		if (symbol == SYM_INTEGER) {
+    
+            rtype = INT_T;
 
+            if (ltype != rtype) 
+                typeWarning(ltype, rtype);
 			
 			if (shiftSymbol == SYM_LLS) 
 				emitRFormat(OP_SPECIAL, currentTemporary(), 0, currentTemporary(), literal, FCT_SLL);
@@ -2851,9 +2856,12 @@ int gr_logicalShift() {
 		// shift register
 		else {
 
-			gr_simpleExpression();
+			rtype = gr_simpleExpression();
 
 		    // assert: allocatedTemporaries == n + 2
+
+            if (ltype != rtype) 
+                typeWarning(ltype, rtype);
 
 		    if (shiftSymbol == SYM_LLS) 
 		        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_SLLV);
@@ -6867,8 +6875,8 @@ int main(int argc, int *argv) {
     println();                                  //D stands for Daniela
     println();                                  //A for Aziz
 						                        //T for Tarek
-	testShiftOperatorsOnePos();
-	testShiftOperatorsTwoPos();
+	//testShiftOperatorsOnePos();
+	//testShiftOperatorsTwoPos();
     //testWrongShiftOperators1();
     
 
