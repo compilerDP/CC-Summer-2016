@@ -6739,9 +6739,6 @@ int testShiftOperatorsOnePos(){
    		print(itoa(LeftShiftResult, string_buffer, 10, 0, 0));
    		println();
    		x=x*2;
-   			
-   		
-
    	}
    	
    	print((int*) "Left Shift Test for one Posistion Finished successfully ");
@@ -6759,17 +6756,10 @@ int testShiftOperatorsOnePos(){
     	print(itoa(RightShiftResult, string_buffer, 10, 0, 0));
     	println();
     	u=u/2;
-
-    	
-    		
     }	
 
     print((int*) "Right Shift Test for one Posistion Finished successfully ");
     println();
-
-
-   
-
     return 0;
 }    
 
@@ -6798,9 +6788,6 @@ int testShiftOperatorsTwoPos(){
    		print(itoa(LeftShiftResult, string_buffer, 10, 0, 0));
    		println();
    		x=x*4;
-   			
-   		
-
    	}
    	
    	print((int*) "Left Shift Test for two Posistion Finished successfully ");
@@ -6822,7 +6809,6 @@ int testShiftOperatorsTwoPos(){
 
     print((int*) "Right Shift Test for Two Posistions Finished successfully ");
     println();
-
     return 0;
 }    
 
