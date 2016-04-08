@@ -6002,6 +6002,8 @@ void execute() {
             print((int*) ")");
         }
         print((int*) ": ");
+        print(itoa(ir, string_buffer, 16, 8, 0));
+        print((int*) ": ");
     }
 
     if (opcode == OP_SPECIAL) {
