@@ -88,6 +88,7 @@ int *selfieName = (int*) 0;
 void initLibrary();
 
 int twoToThePowerOf(int p);
+int* intToBinary(int n, int* s);
 int leftShift(int n, int b);
 int rightShift(int n, int b);
 
@@ -1183,6 +1184,36 @@ int freePageFrame = 0;
 int twoToThePowerOf(int p) {
     // assert: 0 <= p < 31
     return *(power_of_two_table + p);
+}
+
+int* intToBinary(int n, int *s) {
+    // assert: n >= 0
+
+    int rest;
+    int i;
+    i = 0;
+
+    if (n == 0) 
+        return (int*) "0";
+
+    while (n > 0) {
+        rest = n % 2;
+
+        if (rest == 0)
+            storeCharacter(s, i, '0');
+        else
+            storeCharacter(s, i, '1');
+
+        i = i + 1;
+
+        n = n / 2;
+    }
+
+    storeCharacter(s, i, 0); // null terminated string
+
+    stringReverse(s);
+
+    return s;
 }
 
 int leftShift(int n, int b) {
@@ -6705,135 +6736,27 @@ int selfie(int argc, int* argv) {
 
     return 0;
 }
-int testShiftOperatorsOnePos(){
-	
-	int LeftShiftResult;
-	int x;
-	int y;
-	int u;
-	int v;
-	int RightShiftResult;
 
-    x = 1;
-	y = 1;
-	print((int*) "Started Shift Left Test for one Position With 1");
-	println();
+int a;
+int b;
+int c;
 
+void testShift () {
+    a = 1;
+    b = 2;
+    c = a << b >> a;
 
-	while(x <= 128 ){
-    	
-    	LeftShiftResult = x << y;
-
-   		//print((int*) "x << y = ");
-   		print(itoa(LeftShiftResult, string_buffer, 10, 0, 0));
-   		println();
-   		x=x*2;
-   	}
-   	
-   	print((int*) "Left Shift Test for one Posistion Finished successfully ");
-
-   	println();
-
-   	print((int*) "Started RightShift Test for one Position with 256");
-   	println();
-
-    u=256;
-    v=1;
-   	while(u >= 2){
-    	RightShiftResult = u >> v;
-   	   // print((int*) "u >> v = ");
-    	print(itoa(RightShiftResult, string_buffer, 10, 0, 0));
-    	println();
-    	u=u/2;
-    }	
-
-    print((int*) "Right Shift Test for one Posistion Finished successfully ");
     println();
-    return 0;
-}    
+    print((int*)"a = ");
+    print(itoa(a, string_buffer, 10, 0, 0));
+    print((int*)", b = ");
+    print(itoa(b, string_buffer, 10, 0, 0));
+    print((int*)", a << b >> a = ");
+    print(itoa(c, string_buffer, 10, 0, 0));                 
+    println(); 
+}
 
-
-
-int testShiftOperatorsTwoPos(){
-	
-	int LeftShiftResult;
-	int x;
-	int y;
-	int u;
-	int v;
-	int RightShiftResult;
-
-    x = 1;
-	y = 2;
-	print((int*) "Started Shift Left Test for two Positions With 1");
-	println();
-
-
-	while(x <= 128 ){
-    	
-    	LeftShiftResult = x << y;
-
-   		//print((int*) "x << y = ");
-   		print(itoa(LeftShiftResult, string_buffer, 10, 0, 0));
-   		println();
-   		x=x*4;
-   	}
-   	
-   	print((int*) "Left Shift Test for two Posistion Finished successfully ");
-
-   	println();
-
-   	print((int*) "Started RightShift Test for two Positions with 256");
-   	println();
-
-    u=256;
-    v=2;
-   	while(u >= 2){
-    	RightShiftResult = u >> v;
-   	    //print((int*) "u >> v = ");
-    	print(itoa(RightShiftResult, string_buffer, 10, 0, 0));
-    	println();
-    	u=u/4;
-    }	
-
-    print((int*) "Right Shift Test for Two Posistions Finished successfully ");
-    println();
-    return 0;
-}    
-
-// commented out so it can be compiled
-
-//int testWrongShiftOperators1(){ //when this function is exeucted it generates Core Dump
-
-	//int LeftShiftResult;
-	//int x;
-	//int y;
-	//int u;
-	//int v;
-	//int RightShiftResult;
-
-    //x = 8;
-	//y = 2;
-    // LeftShiftResult = x <>> y;             
-    // LeftShiftResult = x <<>> y;
-    // LeftShiftResult = x <<->> y;		   
-								              
-   //print((int*) "x << y = ");
-   //print(itoa(LeftShiftResult, string_buffer, 10, 0, 0));
-   //println();
-
-
-   //u=20;
-   //v=2;
-
-   //RightShiftResult = u >>> v;            
-   //print((int*) "u >> v = ");              
-   //print(itoa(RightShiftResult, string_buffer, 10, 0, 0));
-   //println();
-
-    //return 0;   
-//}    
-
+int *string;
 
 int main(int argc, int *argv) {
     initLibrary();
@@ -6855,10 +6778,14 @@ int main(int argc, int *argv) {
     println();                                  //D stands for Daniela
     println();                                  //A for Aziz
 						                        //T for Tarek
-	//testShiftOperatorsOnePos();
-	//testShiftOperatorsTwoPos();
-    //testWrongShiftOperators1();
-    
+//    testShift();
+
+    string = malloc(8);
+
+    intToBinary(20, string);
+    println();
+    print(string);
+    println();
 
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
