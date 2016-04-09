@@ -4621,25 +4621,6 @@ void implementMalloc() {
     }
 }
 
-<<<<<<< HEAD
-void emitPutchar() {
-    createSymbolTableEntry(LIBRARY_TABLE, (int*) "putchar", 0, PROCEDURE, INT_T, 0, binaryLength);
-
-    emitIFormat(OP_ADDIU, REG_ZR, REG_A2, WORDSIZE); // write one word
-
-    emitIFormat(OP_ADDIU, REG_SP, REG_A1, 0); // pointer to character
-    emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
-
-    emitIFormat(OP_ADDIU, REG_ZR, REG_A0, 1); // stdout file descriptor
-
-    emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_WRITE);
-    emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
-
-    emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
-}
-
-=======
->>>>>>> 8930c75ab28410fb602c678ad33045526dfaa97a
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
