@@ -89,6 +89,7 @@ void initLibrary();
 
 int twoToThePowerOf(int p);
 int* intToBinary(int n, int* s);
+int binaryToInt(int* s, int isNegative);
 int leftShift(int n, int b);
 int rightShift(int n, int b);
 
@@ -1193,8 +1194,15 @@ int* intToBinary(int n, int *s) {
     int i;
     i = 0;
 
-    if (n == 0) 
-        return (int*) "0";
+    if (n == 0) {
+
+        storeCharacter(s, 0, '0');
+        storeCharacter(s, 1, 0); // null terminated string
+
+        stringReverse(s);
+
+        return s;
+    }
 
     while (n > 0) {
         rest = n % 2;
@@ -1214,6 +1222,48 @@ int* intToBinary(int n, int *s) {
     stringReverse(s);
 
     return s;
+}
+
+int binaryToInt(int* s, int isNegative) {
+
+    int length;
+    int c;
+    int i;
+    int n;
+    int m;
+
+    length = stringLength(s);
+
+    if (length == 0) 
+        return 0;
+
+    i = 0;
+    n = 0;
+    m = 1;      // 2⁰
+
+    while (i < length - 1) {
+
+        c = loadCharacter(s, i);
+        c = c - '0';
+
+        if (c == 1)
+            n = n + m;
+
+        m = m * 2; 
+
+        i = i + 1;
+    }
+
+    if (isNegative == 1)
+        m = -m;
+
+    c = loadCharacter(s, i);
+    c = c - '0';
+
+    if (c == 1)
+        n = n + m;
+
+    return n;
 }
 
 int leftShift(int n, int b) {
@@ -6744,19 +6794,38 @@ int c;
 void testShift () {
     a = 1;
     b = 2;
-    c = a << b >> a;
+    c = a << b;
 
     println();
     print((int*)"a = ");
     print(itoa(a, string_buffer, 10, 0, 0));
     print((int*)", b = ");
     print(itoa(b, string_buffer, 10, 0, 0));
-    print((int*)", a << b >> a = ");
+    print((int*)", a << b = ");
     print(itoa(c, string_buffer, 10, 0, 0));                 
     println(); 
 }
 
-int *string;
+void testBinary() {
+    int *string;
+    int integer;
+
+    string = malloc(8);
+    *string = 0;
+
+    intToBinary(2, string);
+    println();
+    print((int*) "2 => ");
+    print(string);
+    println();
+
+    integer = binaryToInt(string, 0);
+    println();
+    print(string);
+    print((int*) " => ");
+    print(itoa(integer, string_buffer, 10, 0, 0));
+    println();
+}
 
 int main(int argc, int *argv) {
     initLibrary();
@@ -6779,13 +6848,7 @@ int main(int argc, int *argv) {
     println();                                  //A for Aziz
 						                        //T for Tarek
 //    testShift();
-
-    string = malloc(8);
-
-    intToBinary(20, string);
-    println();
-    print(string);
-    println();
+    testBinary();
 
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
