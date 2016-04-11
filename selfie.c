@@ -1268,6 +1268,35 @@ int binaryToInt(int* s, int isNegative) {
     return n;
 }
 
+int* twosComplement(int *s) {
+    int *complement;
+    int i;
+    int j;
+    int c;
+    int firstOneFound;
+
+    complement = malloc(8);
+    i = stringLength(s);
+    j = 0;
+    firstOneFound = 0;
+
+    storeCharacter(complement, j, '1');
+
+    j = j + 1;
+
+    while (i > 0) {
+        c = loadCharacter(i);
+        c = c - '0';
+
+        i = i - 1;
+        j = j + 1;
+    }
+
+    stringReverse(complement);
+    
+    return complement;
+}
+
 int leftShift(int n, int b) {
     // assert: b >= 0;
 
