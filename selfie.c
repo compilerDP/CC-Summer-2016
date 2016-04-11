@@ -1241,6 +1241,8 @@ int binaryToInt(int* s, int isNegative) {
     n = 0;
     m = 1;      // 2⁰
 
+    stringReverse(s);
+
     while (i < length - 1) {
 
         c = loadCharacter(s, i);
@@ -1249,7 +1251,7 @@ int binaryToInt(int* s, int isNegative) {
         if (c == 1)
             n = n + m;
 
-        m = m * 2; 
+        m = m * 2;
 
         i = i + 1;
     }
@@ -6809,19 +6811,19 @@ void testShift () {
 void testBinary() {
     int *string;
     int integer;
+    int intValue;
 
     string = malloc(8);
     *string = 0;
+    intValue = 100;
 
-    intToBinary(2, string);
+    intToBinary(intValue, string);
     println();
-    print((int*) "2 => ");
+    print(itoa(intValue, string_buffer, 10, 0, 0));
+    print((int*) " => ");
     print(string);
-    println();
 
     integer = binaryToInt(string, 0);
-    println();
-    print(string);
     print((int*) " => ");
     print(itoa(integer, string_buffer, 10, 0, 0));
     println();
