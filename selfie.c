@@ -1189,7 +1189,8 @@ int leftShift(int n, int b) {
     // assert: b >= 0;
 
     if (b < 31)
-        return n * twoToThePowerOf(b);
+       // return n * twoToThePowerOf(b);
+    	return n << b; // multiplication is now faster
     else if (b == 31)
         return n * twoToThePowerOf(30) * 2;
     else
@@ -1201,7 +1202,8 @@ int rightShift(int n, int b) {
 
     if (n >= 0) {
         if (b < 31)
-            return n / twoToThePowerOf(b);
+           // return n / twoToThePowerOf(b);
+        	return n >> b;// division is now faster 
         else
             return 0;
     } else if (b < 31)
