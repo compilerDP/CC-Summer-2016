@@ -88,8 +88,6 @@ int *selfieName = (int*) 0;
 void initLibrary();
 
 int twoToThePowerOf(int p);
-int* intToBinary(int n, int* s);
-int binaryToInt(int* s, int isNegative);
 int leftShift(int n, int b);
 int rightShift(int n, int b);
 
