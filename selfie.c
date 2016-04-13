@@ -1268,34 +1268,34 @@ int binaryToInt(int* s, int isNegative) {
     return n;
 }
 
-int* twosComplement(int *s) {
-    int *complement;
-    int i;
-    int j;
-    int c;
-    int firstOneFound;
+//int* twosComplement(int *s) {
+  //  int *complement;
+  // int i;
+  //  int j;
+  //  int c;
+  //  int firstOneFound;
 
-    complement = malloc(8);
-    i = stringLength(s);
-    j = 0;
-    firstOneFound = 0;
+  //  complement = malloc(8);
+  //  i = stringLength(s);
+  //  j = 0;
+  //  firstOneFound = 0;
 
-    storeCharacter(complement, j, '1');
+  //  storeCharacter(complement, j, '1');
 
-    j = j + 1;
+  //  j = j + 1;
 
-    while (i > 0) {
-        c = loadCharacter(i);
-        c = c - '0';
+  //  while (i > 0) {
+  //      c = loadCharacter(i);
+  //      c = c - '0';
 
-        i = i - 1;
-        j = j + 1;
-    }
+  //      i = i - 1;
+  //      j = j + 1;
+  //  }
 
-    stringReverse(complement);
+  //  stringReverse(complement);
     
-    return complement;
-}
+  //  return complement;
+//}
 
 int leftShift(int n, int b) {
     // assert: b >= 0;
@@ -1304,7 +1304,8 @@ int leftShift(int n, int b) {
        // return n * twoToThePowerOf(b);
     	return n << b; // multiplication is now faster
     else if (b == 31)
-        return n * twoToThePowerOf(30) * 2;
+       // return n * twoToThePowerOf(30) * 2;
+    	return (n << 30) * 2;
     else
         return 0;
 }
@@ -1321,8 +1322,9 @@ int rightShift(int n, int b) {
     } else if (b < 31)
         // works even if n == INT_MIN:
         // shift right n with msb reset and then restore msb
-        return ((n + 1) + INT_MAX) / twoToThePowerOf(b) +
-            (INT_MAX / twoToThePowerOf(b) + 1);
+      //  return ((n + 1) + INT_MAX) / twoToThePowerOf(b) +
+           // (INT_MAX / twoToThePowerOf(b) + 1);
+          return (((n + 1) + INT_MAX) >> b) + ((INT_MAX >> b) + 1);
     else if (b == 31)
         return 1;
     else
@@ -6881,7 +6883,7 @@ int main(int argc, int *argv) {
     println();                                  //A for Aziz
 						                        //T for Tarek
 //    testShift();
-    testBinary();
+//    testBinary();
 
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
