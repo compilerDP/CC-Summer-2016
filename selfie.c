@@ -90,6 +90,8 @@ void initLibrary();
 int twoToThePowerOf(int p);
 int leftShift(int n, int b);
 int rightShift(int n, int b);
+int leftShiftOld(int n, int b);
+int rightShiftOld(int n, int b);
 
 int  loadCharacter(int *s, int i);
 int* storeCharacter(int *s, int i, int c);
@@ -1188,9 +1190,17 @@ int twoToThePowerOf(int p) {
 int leftShift(int n, int b) {
     // assert: b >= 0;
 
-    if (b < 31)
-       // return n * twoToThePowerOf(b);
+    if (b <= 31)
     	return n << b; // multiplication is now faster
+    else
+        return 0;
+}
+
+int leftShiftOld(int n, int b) {
+    // assert: b >= 0;
+
+    if (b < 31)
+        return n * twoToThePowerOf(b);
     else if (b == 31)
         return n * twoToThePowerOf(30) * 2;
     else
@@ -1202,8 +1212,26 @@ int rightShift(int n, int b) {
 
     if (n >= 0) {
         if (b < 31)
-           // return n / twoToThePowerOf(b);
         	return n >> b;// division is now faster 
+        else
+            return 0;
+    } else if (b < 31)
+        // works even if n == INT_MIN:
+        // shift right n with msb reset and then restore msb
+        return (((n + 1) + INT_MAX) >> b) +
+            ((INT_MAX >> b) + 1);
+    else if (b == 31)
+        return 1;
+    else
+        return 0;
+}
+
+int rightShiftOld(int n, int b) {
+    // assert: b >= 0
+
+    if (n >= 0) {
+        if (b < 31)
+           return n / twoToThePowerOf(b);
         else
             return 0;
     } else if (b < 31)
@@ -2843,9 +2871,9 @@ int gr_logicalShift() {
                 typeWarning(ltype, rtype);
 			
 			if (shiftSymbol == SYM_LLS) 
-				emitRFormat(OP_SPECIAL, currentTemporary(), 0, currentTemporary(), literal, FCT_SLL);
+				emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), literal, FCT_SLL);
 			else
-				emitRFormat(OP_SPECIAL, currentTemporary(), 0, currentTemporary(), literal, FCT_SRL);
+				emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), literal, FCT_SRL);
 
 		getSymbol();
 
@@ -2862,10 +2890,10 @@ int gr_logicalShift() {
                 typeWarning(ltype, rtype);
 
 		    if (shiftSymbol == SYM_LLS) 
-		        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_SLLV);
+		        emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), 0, FCT_SLLV);
 
 		    else
-		        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_SRLV);
+		        emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), 0, FCT_SRLV);
 
 		    tfree(1);
 		}
@@ -5122,7 +5150,7 @@ void fct_sll() {
    		    print((int*) " ");
     	    printRegister(rd);
         	print((int*) ",");
-       		printRegister(rs);
+       		printRegister(rt);
         	print((int*) ",");
 			print((int*) "shamt");
         	if (interpret) {
@@ -5131,9 +5159,9 @@ void fct_sll() {
             	print((int*) "=");
             	print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
             	print((int*) ",");
-            	printRegister(rs);
+            	printRegister(rt);
             	print((int*) "=");
-            	print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
+            	print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
             	print((int*) ",");
 	    		print((int*) "shamt");
 	    		print((int*) "=");
@@ -5142,7 +5170,7 @@ void fct_sll() {
     	}
 
     	if (interpret) {
-        	*(registers+rd) =  leftShift(*(registers+rs), shamt);
+        	*(registers+rd) =  leftShift(*(registers+rt), shamt);
 
         	pc = pc + WORDSIZE;
     	}
@@ -5169,7 +5197,7 @@ void fct_srl() {
         print((int*) " ");
         printRegister(rd);
         print((int*) ",");
-        printRegister(rs);
+        printRegister(rt);
         print((int*) ",");
         print((int*) "shamt");
         if (interpret) {
@@ -5178,9 +5206,9 @@ void fct_srl() {
             print((int*) "=");
             print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
             print((int*) ",");
-            printRegister(rs);
+            printRegister(rt);
             print((int*) "=");
-            print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
+            print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
             print((int*) ",");
             print((int*) "shamt");
             print((int*) "=");
@@ -5189,7 +5217,7 @@ void fct_srl() {
     }
 
     if (interpret) {
-        *(registers+rd) =  rightShift(*(registers+rs), shamt);
+        *(registers+rd) =  rightShift(*(registers+rt), shamt);
 
         pc = pc + WORDSIZE;
     }
@@ -5211,27 +5239,27 @@ void fct_sllv() {
         print((int*) " ");
         printRegister(rd);
         print((int*) ",");
-        printRegister(rs);
-        print((int*) ",");
         printRegister(rt);
+        print((int*) ",");
+        printRegister(rs);
         if (interpret) {
             print((int*) ": ");
             printRegister(rd);
             print((int*) "=");
             print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
             print((int*) ",");
-            printRegister(rs);
-            print((int*) "=");
-            print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
-            print((int*) ",");
             printRegister(rt);
             print((int*) "=");
             print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            printRegister(rs);
+            print((int*) "=");
+            print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
         }
     }
 
     if (interpret) {
-        *(registers+rd) =  leftShift(*(registers+rs), *(registers+rt));
+        *(registers+rd) =  leftShift(*(registers+rt), *(registers+rs));
 
         pc = pc + WORDSIZE;
     }
@@ -5253,27 +5281,27 @@ void fct_srlv() {
         print((int*) " ");
         printRegister(rd);
         print((int*) ",");
-        printRegister(rs);
-        print((int*) ",");
         printRegister(rt);
+        print((int*) ",");
+        printRegister(rs);
         if (interpret) {
             print((int*) ": ");
             printRegister(rd);
             print((int*) "=");
             print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
             print((int*) ",");
-            printRegister(rs);
-            print((int*) "=");
-            print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
-            print((int*) ",");
             printRegister(rt);
             print((int*) "=");
             print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            printRegister(rs);
+            print((int*) "=");
+            print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
         }
     }
 
     if (interpret) {
-        *(registers+rd) =  rightShift(*(registers+rs), *(registers+rt));
+        *(registers+rd) =  rightShift(*(registers+rt), *(registers+rs));
 
         pc = pc + WORDSIZE;
     }
@@ -6708,22 +6736,26 @@ int selfie(int argc, int* argv) {
     return 0;
 }
 
-int a;
-int b;
-int c;
-
 void testShift () {
-    a = 1;
-    b = 2;
-    c = a << b;
+    int a;
+    int b;
+    int c;
+    int d;
+
+    a = -2;
+    b = 4;
+    c = a >> b;
+    d = rightShiftOld(a, b);
 
     println();
     print((int*)"a = ");
     print(itoa(a, string_buffer, 10, 0, 0));
     print((int*)", b = ");
     print(itoa(b, string_buffer, 10, 0, 0));
-    print((int*)", a << b = ");
-    print(itoa(c, string_buffer, 10, 0, 0));                 
+    print((int*)", a >> b = ");
+    print(itoa(c, string_buffer, 10, 0, 0)); 
+    print((int*)", rightShiftOld(a, b) = ");
+    print(itoa(d, string_buffer, 10, 0, 0));                 
     println(); 
 }
 
@@ -6747,7 +6779,7 @@ int main(int argc, int *argv) {
     println();                                  //D stands for Daniela
     println();                                  //A for Aziz
 						                        //T for Tarek
-//    testShift();
+    testShift();
 
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
