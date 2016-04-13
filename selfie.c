@@ -1218,7 +1218,8 @@ int rightShift(int n, int b) {
     } else if (b < 31)
         // works even if n == INT_MIN:
         // shift right n with msb reset and then restore msb
-        return (((n + 1) + INT_MAX) >> b);
+        return (((n + 1) + INT_MAX) >> b) +
+            ((INT_MAX >> b) + 1);
     else if (b == 31)
         return 1;
     else
