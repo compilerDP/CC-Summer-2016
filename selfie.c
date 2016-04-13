@@ -88,8 +88,6 @@ int *selfieName = (int*) 0;
 void initLibrary();
 
 int twoToThePowerOf(int p);
-int* intToBinary(int n, int* s);
-int binaryToInt(int* s, int isNegative);
 int leftShift(int n, int b);
 int rightShift(int n, int b);
 
@@ -1187,6 +1185,7 @@ int twoToThePowerOf(int p) {
     return *(power_of_two_table + p);
 }
 
+<<<<<<< HEAD
 int* intToBinary(int n, int *s) {
     // assert: n >= 0
 
@@ -1297,6 +1296,8 @@ int binaryToInt(int* s, int isNegative) {
   //  return complement;
 //}
 
+=======
+>>>>>>> 7518894cc8b92fa384e40fafe4744e3d36526866
 int leftShift(int n, int b) {
     // assert: b >= 0;
 
@@ -6841,27 +6842,6 @@ void testShift () {
     println(); 
 }
 
-void testBinary() {
-    int *string;
-    int integer;
-    int intValue;
-
-    string = malloc(8);
-    *string = 0;
-    intValue = 100;
-
-    intToBinary(intValue, string);
-    println();
-    print(itoa(intValue, string_buffer, 10, 0, 0));
-    print((int*) " => ");
-    print(string);
-
-    integer = binaryToInt(string, 0);
-    print((int*) " => ");
-    print(itoa(integer, string_buffer, 10, 0, 0));
-    println();
-}
-
 int main(int argc, int *argv) {
     initLibrary();
 
@@ -6883,7 +6863,10 @@ int main(int argc, int *argv) {
     println();                                  //A for Aziz
 						                        //T for Tarek
 //    testShift();
+<<<<<<< HEAD
 //    testBinary();
+=======
+>>>>>>> 7518894cc8b92fa384e40fafe4744e3d36526866
 
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
