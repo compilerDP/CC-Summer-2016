@@ -6863,10 +6863,7 @@ int main(int argc, int *argv) {
     println();                                  //A for Aziz
 						                        //T for Tarek
 //    testShift();
-<<<<<<< HEAD
-//    testBinary();
-=======
->>>>>>> 7518894cc8b92fa384e40fafe4744e3d36526866
+
 
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
