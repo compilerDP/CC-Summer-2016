@@ -1185,7 +1185,7 @@ int twoToThePowerOf(int p) {
     return *(power_of_two_table + p);
 }
 
-<<<<<<< HEAD
+
 int* intToBinary(int n, int *s) {
     // assert: n >= 0
 
@@ -1296,8 +1296,7 @@ int binaryToInt(int* s, int isNegative) {
   //  return complement;
 //}
 
-=======
->>>>>>> 7518894cc8b92fa384e40fafe4744e3d36526866
+
 int leftShift(int n, int b) {
     // assert: b >= 0;
 
