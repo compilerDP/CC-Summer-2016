@@ -90,8 +90,6 @@ void initLibrary();
 int twoToThePowerOf(int p);
 int leftShift(int n, int b);
 int rightShift(int n, int b);
-int leftShiftOld(int n, int b);
-int rightShiftOld(int n, int b);
 
 int  loadCharacter(int *s, int i);
 int* storeCharacter(int *s, int i, int c);
@@ -1199,17 +1197,6 @@ int leftShift(int n, int b) {
         return 0;
 }
 
-int leftShiftOld(int n, int b) {
-    // assert: b >= 0;
-
-    if (b < 31)
-        return n * twoToThePowerOf(b);
-    else if (b == 31)
-        return n * twoToThePowerOf(30) * 2;
-    else
-        return 0;
-}
-
 int rightShift(int n, int b) {
     // assert: b >= 0
 
@@ -1223,25 +1210,6 @@ int rightShift(int n, int b) {
         // shift right n with msb reset and then restore msb
         return (((n + 1) + INT_MAX) >> b) +
             ((INT_MAX >> b) + 1);
-    else if (b == 31)
-        return 1;
-    else
-        return 0;
-}
-
-int rightShiftOld(int n, int b) {
-    // assert: b >= 0
-
-    if (n >= 0) {
-        if (b < 31)
-           return n / twoToThePowerOf(b);
-        else
-            return 0;
-    } else if (b < 31)
-        // works even if n == INT_MIN:
-        // shift right n with msb reset and then restore msb
-        return ((n + 1) + INT_MAX) / twoToThePowerOf(b) +
-            (INT_MAX / twoToThePowerOf(b) + 1);
     else if (b == 31)
         return 1;
     else
@@ -2683,7 +2651,6 @@ int gr_factor() {
 
     // integer?
     } else if (symbol == SYM_INTEGER) {
-//        load_integer(literal);
         isValue = 1;
         constantValue = literal;
 
@@ -2762,19 +2729,14 @@ int gr_term() {
 
                 rValue = constantValue;
                 
-                if (operatorSymbol == SYM_ASTERISK) {
-
+                if (operatorSymbol == SYM_ASTERISK)
                     lValue = lValue * rValue;
 
-                } else if (operatorSymbol == SYM_DIV) {
-
+                else if (operatorSymbol == SYM_DIV)
                     lValue = lValue / rValue;
 
-                } else if (operatorSymbol == SYM_MOD) {
-
+                else if (operatorSymbol == SYM_MOD)
                     lValue = lValue % rValue;
-
-                }
 
                 constantValue = lValue;
             }
@@ -2851,7 +2813,6 @@ int gr_term() {
         }
     }
 
-
     return ltype;
 }
 
@@ -2860,6 +2821,9 @@ int gr_simpleExpression() {
     int ltype;
     int operatorSymbol;
     int rtype;
+    int lValue;
+    int rValue;
+    int valueFound = 0;
 
     // assert: n = allocatedTemporaries
 
@@ -2886,7 +2850,10 @@ int gr_simpleExpression() {
 
     ltype = gr_term();
 
-    // assert: allocatedTemporaries == n + 1
+    if (isValue == 1) {
+        lValue = constantValue;
+        valueFound = 1;
+    }
 
     if (sign) {
         if (ltype != INT_T) {
@@ -2906,29 +2873,91 @@ int gr_simpleExpression() {
 
         rtype = gr_term();
 
-        // assert: allocatedTemporaries == n + 2
+        // left side and right side are values
+        if (valueFound == 1) {
 
-        if (operatorSymbol == SYM_PLUS) {
-            if (ltype == INTSTAR_T) {
-                if (rtype == INT_T)
-                    // pointer arithmetic: factor of 2^2 of integer operand
-                    emitLeftShiftBy(2);
-            } else if (rtype == INTSTAR_T)
-                typeWarning(ltype, rtype);
+            if (isValue == 1) {
 
-            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
+                rValue = constantValue;
+                
+                if (operatorSymbol == SYM_PLUS)
+                    lValue = lValue + rValue;
 
-        } else if (operatorSymbol == SYM_MINUS) {
-            if (ltype != rtype)
-                typeWarning(ltype, rtype);
+                else if (operatorSymbol == SYM_MINUS)
+                    lValue = lValue - rValue;
 
-            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_SUBU);
+                constantValue = lValue;
+            }
         }
 
-        tfree(1);
-    }
+        // either only the right side is a value or none of both is a value
+        else {
 
-    // assert: allocatedTemporaries == n + 1
+            // assert: allocatedTemporaries == n + 1
+            // contains the content of the LEFT side
+
+            if (isValue == 1)
+                load_integer(constantValue);
+
+            // assert: allocatedTemporaries == n + 2
+            // contains the content/the value of the RIGHT side
+
+            if (operatorSymbol == SYM_PLUS) {
+                if (ltype == INTSTAR_T) {
+                    if (rtype == INT_T)
+                        // pointer arithmetic: factor of 2^2 of integer operand
+                        emitLeftShiftBy(2);
+                } else if (rtype == INTSTAR_T)
+                    typeWarning(ltype, rtype);
+
+                emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
+
+            } else if (operatorSymbol == SYM_MINUS) {
+                if (ltype != rtype)
+                    typeWarning(ltype, rtype);
+
+                emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_SUBU);
+            }
+
+            tfree(1);
+
+            // assert: allocatedTemporaries == n + 1
+        }
+
+        // only left side is a value
+        if (valueFound == 1) {
+
+            if (isValue == 0) {
+
+                // assert: allocatedTemporaries == n + 1
+                // contains the content of the RIGHT side
+
+                load_integer(lValue);
+
+                // assert: allocatedTemporaries == n + 2
+                // contains the value of the LEFT side
+
+                if (operatorSymbol == SYM_PLUS) {
+                    if (rtype == INTSTAR_T)
+                        typeWarning(ltype, rtype);
+
+                    emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), 0, FCT_ADDU);
+
+                } else if (operatorSymbol == SYM_MINUS) {
+                    if (ltype != rtype)
+                        typeWarning(ltype, rtype);
+
+                    emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), 0, FCT_SUBU);
+                }
+
+                tfree(1);
+
+                valueFound = 0;
+
+                // assert: allocatedTemporaries == n + 1
+            }
+        }   
+    }
 
     return ltype;
 }
@@ -6826,11 +6855,12 @@ int selfie(int argc, int* argv) {
 
 void test () {
     int a;// = 10;
+    //int b;// = 2;
 
-    a = 10 * 2;
+    a = 100 * 4;
 
     println();
-    print((int*)"10 * 2 = ");
+    print((int*)"100 * 4 = ");
     print(itoa(a, string_buffer, 10, 0, 0));                
     println(); 
 }
