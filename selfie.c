@@ -488,6 +488,9 @@ int returnBranches  = 0; // fixup chain for return statements
 
 int *currentProcedureName = (int*) 0; // name of currently parsed procedure
 
+int isValue = 0;
+int constantValue = 0;
+
 // -----------------------------------------------------------------
 // ---------------------- MACHINE CODE LIBRARY ---------------------
 // -----------------------------------------------------------------
@@ -2580,6 +2583,9 @@ int gr_factor() {
 
     hasCast = 0;
 
+    isValue = 0;
+    constantValue = 0;
+
     type = INT_T;
 
     while (lookForFactor()) {
@@ -2677,7 +2683,9 @@ int gr_factor() {
 
     // integer?
     } else if (symbol == SYM_INTEGER) {
-        load_integer(literal);
+//        load_integer(literal);
+        isValue = 1;
+        constantValue = literal;
 
         getSymbol();
 
@@ -2726,12 +2734,18 @@ int gr_term() {
     int ltype;
     int operatorSymbol;
     int rtype;
+    int lValue;
+    int rValue;
+    int valueFound = 0;
 
     // assert: n = allocatedTemporaries
 
     ltype = gr_factor();
 
-    // assert: allocatedTemporaries == n + 1
+    if (isValue == 1) {
+        lValue = constantValue;
+        valueFound = 1;
+    }
 
     // * / or % ?
     while (isStarOrDivOrModulo()) {
@@ -2741,28 +2755,102 @@ int gr_term() {
 
         rtype = gr_factor();
 
-        // assert: allocatedTemporaries == n + 2
-        
-        if (ltype != rtype)
-            typeWarning(ltype, rtype);
+        // left side and right side are values
+        if (valueFound == 1) {
 
-        if (operatorSymbol == SYM_ASTERISK) {
-            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, 0, FCT_MULTU);
-            emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), 0, FCT_MFLO);
+            if (isValue == 1) {
 
-        } else if (operatorSymbol == SYM_DIV) {
-            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, 0, FCT_DIVU);
-            emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), 0, FCT_MFLO);
+                rValue = constantValue;
+                
+                if (operatorSymbol == SYM_ASTERISK) {
 
-        } else if (operatorSymbol == SYM_MOD) {
-            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, 0, FCT_DIVU);
-            emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), 0, FCT_MFHI);
+                    lValue = lValue * rValue;
+
+                } else if (operatorSymbol == SYM_DIV) {
+
+                    lValue = lValue / rValue;
+
+                } else if (operatorSymbol == SYM_MOD) {
+
+                    lValue = lValue % rValue;
+
+                }
+
+                constantValue = lValue;
+            }
         }
 
-        tfree(1);
+        // either only the right side is a value or none of both is a value
+        else {
+
+            // assert: allocatedTemporaries == n + 1
+            // contains the content of the LEFT side
+
+            if (isValue == 1)
+                load_integer(constantValue);
+
+            // assert: allocatedTemporaries == n + 2
+            // contains the content/the value of the RIGHT side
+
+            if (ltype != rtype)
+                typeWarning(ltype, rtype);
+
+            if (operatorSymbol == SYM_ASTERISK) {
+                emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, 0, FCT_MULTU);
+                emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), 0, FCT_MFLO);
+
+            } else if (operatorSymbol == SYM_DIV) {
+                emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, 0, FCT_DIVU);
+                emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), 0, FCT_MFLO);
+
+            } else if (operatorSymbol == SYM_MOD) {
+                emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, 0, FCT_DIVU);
+                emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), 0, FCT_MFHI);
+            }
+
+            tfree(1);
+
+            // assert: allocatedTemporaries == n + 1
+        }
+
+        // only left side is a value
+        if (valueFound == 1) {
+
+            if (isValue == 0) {
+
+                // assert: allocatedTemporaries == n + 1
+                // contains the content of the RIGHT side
+
+                load_integer(lValue);
+
+                // assert: allocatedTemporaries == n + 2
+                // contains the value of the LEFT side
+
+                if (ltype != rtype)
+                    typeWarning(ltype, rtype);
+
+                if (operatorSymbol == SYM_ASTERISK) {
+                    emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), 0, 0, FCT_MULTU);
+                    emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), 0, FCT_MFLO);
+
+                } else if (operatorSymbol == SYM_DIV) {
+                    emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), 0, 0, FCT_DIVU);
+                    emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), 0, FCT_MFLO);
+
+                } else if (operatorSymbol == SYM_MOD) {
+                    emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), 0, 0, FCT_DIVU);
+                    emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), 0, FCT_MFHI);
+                }
+
+                tfree(1);
+
+                valueFound = 0;
+
+                // assert: allocatedTemporaries == n + 1
+            }
+        }
     }
 
-    // assert: allocatedTemporaries == n + 1
 
     return ltype;
 }
@@ -6736,26 +6824,14 @@ int selfie(int argc, int* argv) {
     return 0;
 }
 
-void testShift () {
-    int a;
-    int b;
-    int c;
-    int d;
+void test () {
+    int a;// = 10;
 
-    a = -1;
-    b = 1;
-    c = a >> b;
-    d = rightShiftOld(a, b);
+    a = 10 * 2;
 
     println();
-    print((int*)"a = ");
-    print(itoa(a, string_buffer, 10, 0, 0));
-    print((int*)", b = ");
-    print(itoa(b, string_buffer, 10, 0, 0));
-    print((int*)", a >> b = ");
-    print(itoa(c, string_buffer, 10, 0, 0)); 
-    print((int*)", rightShiftOld(a, b) = ");
-    print(itoa(d, string_buffer, 10, 0, 0));                 
+    print((int*)"10 * 2 = ");
+    print(itoa(a, string_buffer, 10, 0, 0));                
     println(); 
 }
 
@@ -6779,7 +6855,7 @@ int main(int argc, int *argv) {
     println();                                  //D stands for Daniela
     println();                                  //A for Aziz
 						                        //T for Tarek
-    testShift();
+    test();
 
 
     if (selfie(argc, (int*) argv) != 0) {       
