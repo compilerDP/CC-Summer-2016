@@ -2965,13 +2965,16 @@ int gr_simpleExpression() {
 int gr_logicalShift() {
     int ltype;
     int shiftSymbol;
-    int rtype;
 
     // assert: n = allocatedTemporaries
 
     ltype = gr_simpleExpression();
 
-    // assert: allocatedTemporaries == n + 1
+    if (isValue == 1) {
+        load_integer(constantValue);
+    }
+
+	// assert: allocatedTemporaries == n + 1
 
     // << or >>?
     while (isLogicalShift()) {
@@ -2979,32 +2982,24 @@ int gr_logicalShift() {
 
         getSymbol();
 
-		// shift immediate
-		if (symbol == SYM_INTEGER) {
-    
-            rtype = INT_T;
+        gr_simpleExpression();
 
-            if (ltype != rtype) 
-                typeWarning(ltype, rtype);
+		// shift immediate
+		if (isValue == 1) {
 			
 			if (shiftSymbol == SYM_LLS) 
-				emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), literal, FCT_SLL);
+				emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), constantValue, FCT_SLL);
 			else
-				emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), literal, FCT_SRL);
+				emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), constantValue, FCT_SRL);
 
-		getSymbol();
+		    getSymbol();
 
 		} 
 
 		// shift register
 		else {
 
-			rtype = gr_simpleExpression();
-
 		    // assert: allocatedTemporaries == n + 2
-
-            if (ltype != rtype) 
-                typeWarning(ltype, rtype);
 
 		    if (shiftSymbol == SYM_LLS) 
 		        emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), 0, FCT_SLLV);
@@ -3030,6 +3025,10 @@ int gr_expression() {
 
     ltype = gr_logicalShift();
 
+    if (isValue == 1) {
+        load_integer(constantValue);
+    }
+
     // assert: allocatedTemporaries == n + 1
 
     //optional: ==, !=, <, >, <=, >= simpleExpression
@@ -3039,6 +3038,10 @@ int gr_expression() {
         getSymbol();
 
         rtype = gr_logicalShift();
+
+        if (isValue == 1) {
+            load_integer(constantValue);
+        }
 
         // assert: allocatedTemporaries == n + 2
 
