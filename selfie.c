@@ -462,10 +462,10 @@ void help_procedure_prologue(int localVariables);
 void help_procedure_epilogue(int parameters);
 
 int  gr_call(int* procedure);
-int  gr_factor();
-int  gr_term();
-int  gr_simpleExpression();
-int  gr_logicalShift();
+int  gr_factor(int* isValue);
+int  gr_term(int* isValue);
+int  gr_simpleExpression(int* isValue);
+int  gr_logicalShift(int* isValue);
 int  gr_expression();
 void gr_while();
 void gr_if();
@@ -486,9 +486,6 @@ int allocatedMemory = 0; // number of bytes for global variables and strings
 int returnBranches = 0; // fixup chain for return statements
 
 int* currentProcedureName = (int*) 0; // name of currently parsed procedure
-
-int isValue = 0;
-int constantValue = 0;
 
 // -----------------------------------------------------------------
 // ---------------------- MACHINE CODE LIBRARY ---------------------
@@ -2543,7 +2540,7 @@ int gr_call(int* procedure) {
   return type;
 }
 
-int gr_factor() {
+int gr_factor(int* isValue) {
   int hasCast;
   int cast;
   int type;
@@ -2554,8 +2551,8 @@ int gr_factor() {
 
   hasCast = 0;
 
-  isValue = 0;
-  constantValue = 0;
+  *isValue = 0;
+  *(isValue + 1) = 0;
 
   type = INT_T;
 
@@ -2654,8 +2651,8 @@ int gr_factor() {
 
   // integer?
   } else if (symbol == SYM_INTEGER) {
-    isValue = 1;
-    constantValue = literal;
+    *isValue = 1;
+    *(isValue + 1) = literal;
 
     getSymbol();
 
@@ -2700,7 +2697,7 @@ int gr_factor() {
     return type;
 }
 
-int gr_term() {
+int gr_term(int* isValue) {
     int ltype;
     int operatorSymbol;
     int rtype;
@@ -2712,10 +2709,10 @@ int gr_term() {
 
   // assert: n = allocatedTemporaries
 
-  ltype = gr_factor();
+  ltype = gr_factor(isValue);
 
-    if (isValue == 1) {
-        lValue = constantValue;
+    if (*isValue == 1) {
+        lValue = *(isValue + 1);
         valueFound = 1;
     }
 
@@ -2725,14 +2722,14 @@ int gr_term() {
 
     getSymbol();
 
-    rtype = gr_factor();
+    rtype = gr_factor(isValue);
 
         // left side and right side are values
         if (valueFound == 1) {
 
-            if (isValue == 1) {
+            if (*isValue == 1) {
 
-                rValue = constantValue;
+                rValue = *(isValue + 1);
                 
                 if (operatorSymbol == SYM_ASTERISK)
                     lValue = lValue * rValue;
@@ -2743,7 +2740,7 @@ int gr_term() {
                 else if (operatorSymbol == SYM_MOD)
                     lValue = lValue % rValue;
 
-                constantValue = lValue;
+                *(isValue + 1) = lValue;
             }
         }
 
@@ -2753,9 +2750,9 @@ int gr_term() {
             // assert: allocatedTemporaries == n + 1
             // contains the content of the LEFT side
 
-            if (isValue == 1) {
-                load_integer(constantValue);
-                isValue = 0;
+            if (*isValue == 1) {
+                load_integer(*(isValue + 1));
+                *isValue = 0;
             }
 
             // assert: allocatedTemporaries == n + 2
@@ -2785,7 +2782,7 @@ int gr_term() {
         // only left side is a value
         if (valueFound == 1) {
 
-            if (isValue == 0) {
+            if (*isValue == 0) {
 
                 // assert: allocatedTemporaries == n + 1
                 // contains the content of the RIGHT side
@@ -2822,7 +2819,7 @@ int gr_term() {
   return ltype;
 }
 
-int gr_simpleExpression() {
+int gr_simpleExpression(int* isValue) {
     int sign;
     int ltype;
     int operatorSymbol;
@@ -2856,10 +2853,10 @@ int gr_simpleExpression() {
   } else
     sign = 0;
 
-    ltype = gr_term();
+    ltype = gr_term(isValue);
 
-    if (isValue == 1) {
-        lValue = constantValue;
+    if (*isValue == 1) {
+        lValue = *(isValue + 1);
         valueFound = 1;
     }
 
@@ -2871,7 +2868,7 @@ int gr_simpleExpression() {
           ltype = INT_T;
         }
 
-        if (isValue == 0) 
+        if (*isValue == 0) 
             emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), 0, FCT_SUBU);
         else
             lValue = lValue + 1 + INT_MAX;
@@ -2883,14 +2880,14 @@ int gr_simpleExpression() {
 
     getSymbol();
 
-    rtype = gr_term();
+    rtype = gr_term(isValue);
 
         // left side and right side are values
         if (valueFound == 1) {
 
-            if (isValue == 1) {
+            if (*isValue == 1) {
 
-                rValue = constantValue;
+                rValue = *(isValue + 1);
                 
                 if (operatorSymbol == SYM_PLUS)
                     lValue = lValue + rValue;
@@ -2899,10 +2896,10 @@ int gr_simpleExpression() {
                     lValue = lValue - rValue;
 
                     if (lValue < 0)
-                        lValue = INT_MAX + lValue;
+                        lValue = lValue + 1 + INT_MAX;
                 }
 
-                constantValue = lValue;
+                *(isValue + 1) = lValue;
             }
         }
 
@@ -2912,9 +2909,9 @@ int gr_simpleExpression() {
             // assert: allocatedTemporaries == n + 1
             // contains the content of the LEFT side
 
-            if (isValue == 1) {
-                load_integer(constantValue);
-                isValue = 0;
+            if (*isValue == 1) {
+                load_integer(*(isValue + 1));
+                *isValue = 0;
             }
 
             // assert: allocatedTemporaries == n + 2
@@ -2945,7 +2942,7 @@ int gr_simpleExpression() {
         // only left side is a value
         if (valueFound == 1) {
 
-            if (isValue == 0) {
+            if (*isValue == 0) {
 
                 // assert: allocatedTemporaries == n + 1
                 // contains the content of the RIGHT side
@@ -2979,17 +2976,17 @@ int gr_simpleExpression() {
     return ltype;
 }
 
-int gr_logicalShift() {
+int gr_logicalShift(int* isValue) {
     int ltype;
     int shiftSymbol;
 
     // assert: n = allocatedTemporaries
 
-    ltype = gr_simpleExpression();
+    ltype = gr_simpleExpression(isValue);
 
-    if (isValue == 1) {
-        load_integer(constantValue);
-        isValue = 0;
+    if (*isValue == 1) {
+        load_integer(*(isValue + 1));
+        *isValue = 0;
     }
 
 	// assert: allocatedTemporaries == n + 1
@@ -3000,19 +2997,19 @@ int gr_logicalShift() {
 
         getSymbol();
 
-        gr_simpleExpression();
+        gr_simpleExpression(isValue);
 
 		// shift immediate
-		if (isValue == 1) {
+		if (*isValue == 1) {
 			
 			if (shiftSymbol == SYM_LLS) 
-				emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), constantValue, FCT_SLL);
+				emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), *(isValue + 1), FCT_SLL);
 			else
-				emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), constantValue, FCT_SRL);
+				emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), *(isValue + 1), FCT_SRL);
 
 		    getSymbol();
 
-            isValue = 0;
+            *isValue = 0;
 		} 
 
 		// shift register
@@ -3040,10 +3037,16 @@ int gr_expression() {
   int ltype;
   int operatorSymbol;
   int rtype;
+  int* isValue;
+
+  isValue = malloc(2 * SIZEOFINT);
+
+  *isValue = 0;
+  *(isValue + 1) = 0;
 
   // assert: n = allocatedTemporaries
 
-    ltype = gr_logicalShift();
+    ltype = gr_logicalShift(isValue);
 
   // assert: allocatedTemporaries == n + 1
 
@@ -3053,7 +3056,7 @@ int gr_expression() {
 
     getSymbol();
 
-    rtype = gr_logicalShift();
+    rtype = gr_logicalShift(isValue);
 
     // assert: allocatedTemporaries == n + 2
 
