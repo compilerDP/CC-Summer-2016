@@ -2866,10 +2866,10 @@ int gr_simpleExpression() {
 
             ltype = INT_T;
         }
-        if (isValue == 1) 
-            lValue = 0 - lValue;
-        else
+        if (isValue == 0) 
             emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), 0, FCT_SUBU);
+        else
+            lValue = lValue + 1 + INT_MAX;
     }
 
     // + or -?
@@ -2890,8 +2890,12 @@ int gr_simpleExpression() {
                 if (operatorSymbol == SYM_PLUS)
                     lValue = lValue + rValue;
 
-                else if (operatorSymbol == SYM_MINUS)
+                else if (operatorSymbol == SYM_MINUS) {
                     lValue = lValue - rValue;
+
+                    if (lValue < 0)
+                        lValue = INT_MAX + lValue;
+                }
 
                 constantValue = lValue;
             }
@@ -3035,10 +3039,10 @@ int gr_expression() {
 
     ltype = gr_logicalShift();
 
-    if (isValue == 1) {
-        load_integer(constantValue);
-        isValue = 0;
-    }
+//    if (isValue == 1) {
+//        load_integer(constantValue);
+//        isValue = 0;
+//    }
 
     // assert: allocatedTemporaries == n + 1
 
@@ -3050,10 +3054,10 @@ int gr_expression() {
 
         rtype = gr_logicalShift();
 
-        if (isValue == 1) {
-            load_integer(constantValue);
-            isValue = 0;
-        }
+//        if (isValue == 1) {
+//            load_integer(constantValue);
+//            isValue = 0;
+//        }
 
         // assert: allocatedTemporaries == n + 2
 
@@ -6868,18 +6872,6 @@ int selfie(int argc, int* argv) {
     return 0;
 }
 
-void test () {
-    int a;// = 10;
-    //int b;// = 2;
-
-    a = 100 * 4;
-
-    println();
-    print((int*)"100 * 4 = ");
-    print(itoa(a, string_buffer, 10, 0, 0));                
-    println(); 
-}
-
 int main(int argc, int *argv) {
     initLibrary();
 
@@ -6900,8 +6892,6 @@ int main(int argc, int *argv) {
     println();                                  //D stands for Daniela
     println();                                  //A for Aziz
 						                        //T for Tarek
-    test();
-
 
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
