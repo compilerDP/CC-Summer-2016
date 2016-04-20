@@ -2703,7 +2703,9 @@ int gr_term() {
     int rtype;
     int lValue;
     int rValue;
-    int valueFound = 0;
+    int valueFound;
+
+    valueFound = 0;
 
     // assert: n = allocatedTemporaries
 
@@ -2748,8 +2750,10 @@ int gr_term() {
             // assert: allocatedTemporaries == n + 1
             // contains the content of the LEFT side
 
-            if (isValue == 1)
+            if (isValue == 1) {
                 load_integer(constantValue);
+                isValue = 0;
+            }
 
             // assert: allocatedTemporaries == n + 2
             // contains the content/the value of the RIGHT side
@@ -2784,6 +2788,7 @@ int gr_term() {
                 // contains the content of the RIGHT side
 
                 load_integer(lValue);
+                valueFound = 0;
 
                 // assert: allocatedTemporaries == n + 2
                 // contains the value of the LEFT side
@@ -2806,8 +2811,6 @@ int gr_term() {
 
                 tfree(1);
 
-                valueFound = 0;
-
                 // assert: allocatedTemporaries == n + 1
             }
         }
@@ -2823,7 +2826,9 @@ int gr_simpleExpression() {
     int rtype;
     int lValue;
     int rValue;
-    int valueFound = 0;
+    int valueFound;
+
+    valueFound = 0;
 
     // assert: n = allocatedTemporaries
 
@@ -2861,8 +2866,10 @@ int gr_simpleExpression() {
 
             ltype = INT_T;
         }
-
-        emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), 0, FCT_SUBU);
+        if (isValue == 1) 
+            lValue = 0 - lValue;
+        else
+            emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), 0, FCT_SUBU);
     }
 
     // + or -?
@@ -2896,8 +2903,10 @@ int gr_simpleExpression() {
             // assert: allocatedTemporaries == n + 1
             // contains the content of the LEFT side
 
-            if (isValue == 1)
+            if (isValue == 1) {
                 load_integer(constantValue);
+                isValue = 0;
+            }
 
             // assert: allocatedTemporaries == n + 2
             // contains the content/the value of the RIGHT side
@@ -2933,6 +2942,7 @@ int gr_simpleExpression() {
                 // contains the content of the RIGHT side
 
                 load_integer(lValue);
+                valueFound = 0;
 
                 // assert: allocatedTemporaries == n + 2
                 // contains the value of the LEFT side
@@ -2952,8 +2962,6 @@ int gr_simpleExpression() {
 
                 tfree(1);
 
-                valueFound = 0;
-
                 // assert: allocatedTemporaries == n + 1
             }
         }   
@@ -2972,6 +2980,7 @@ int gr_logicalShift() {
 
     if (isValue == 1) {
         load_integer(constantValue);
+        isValue = 0;
     }
 
 	// assert: allocatedTemporaries == n + 1
@@ -2994,6 +3003,7 @@ int gr_logicalShift() {
 
 		    getSymbol();
 
+            isValue = 0;
 		} 
 
 		// shift register
@@ -3027,6 +3037,7 @@ int gr_expression() {
 
     if (isValue == 1) {
         load_integer(constantValue);
+        isValue = 0;
     }
 
     // assert: allocatedTemporaries == n + 1
@@ -3041,6 +3052,7 @@ int gr_expression() {
 
         if (isValue == 1) {
             load_integer(constantValue);
+            isValue = 0;
         }
 
         // assert: allocatedTemporaries == n + 2
