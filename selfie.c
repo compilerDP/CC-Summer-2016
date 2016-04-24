@@ -2716,6 +2716,11 @@ int gr_term(int* isValue) {
   // assert: n = allocatedTemporaries
 
   ltype = gr_factor(isValue);   
+ 
+  if (*isValue == 1) {
+    lIsValue = 1;
+    lValue = *(isValue + 1);
+  }
 
   // * / or % ?
   while (isStarOrDivOrModulo()) {
@@ -2724,6 +2729,11 @@ int gr_term(int* isValue) {
     getSymbol();
 
     rtype = gr_factor(isValue);
+
+    if (*isValue == 1) {
+      rIsValue = 1;
+      rValue = *(isValue + 1);
+    }
 
     if (ltype != rtype)
         typeWarning(ltype, rtype);
@@ -2785,18 +2795,23 @@ int gr_simpleExpression(int* isValue) {
   } else
     sign = 0;
 
-    ltype = gr_term(isValue);
+  ltype = gr_term(isValue);
 
-    if (sign) {
+  if (*isValue == 1) {
+    lIsValue = 1;
+    lValue = *(isValue + 1);
+  }
 
-        if (ltype != INT_T) {
-          typeWarning(INT_T, ltype);
+  if (sign) {
 
-          ltype = INT_T;
-        }
+      if (ltype != INT_T) {
+        typeWarning(INT_T, ltype);
 
-        emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), 0, FCT_SUBU);
-    }
+        ltype = INT_T;
+      }
+
+      emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), 0, FCT_SUBU);
+  }
 
   // + or -?
   while (isPlusOrMinus()) {
@@ -2805,6 +2820,11 @@ int gr_simpleExpression(int* isValue) {
     getSymbol();
 
     rtype = gr_term(isValue);
+
+    if (*isValue == 1) {
+      rIsValue = 1;
+      rValue = *(isValue + 1);
+    }
 
     if (operatorSymbol == SYM_PLUS) {
         if (ltype == INTSTAR_T) {
@@ -2842,6 +2862,11 @@ int gr_logicalShift(int* isValue) {
     // assert: n = allocatedTemporaries
 
     ltype = gr_simpleExpression(isValue);
+
+    if (*isValue == 1) {
+      lIsValue = 1;
+      lValue = *(isValue + 1);
+    }
 
 	  // assert: allocatedTemporaries == n + 1
 
@@ -2907,6 +2932,11 @@ int gr_expression() {
 
   ltype = gr_logicalShift(isValue);
 
+  if (*isValue == 1) {
+    lIsValue = 1;
+    lValue = *(isValue + 1);
+  }
+
   // assert: allocatedTemporaries == n + 1
 
   //optional: ==, !=, <, >, <=, >= simpleExpression
@@ -2916,6 +2946,11 @@ int gr_expression() {
     getSymbol();
 
     rtype = gr_logicalShift(isValue);
+
+    if (*isValue == 1) {
+      rIsValue = 1;
+      rValue = *(isValue + 1);
+    }
 
     // assert: allocatedTemporaries == n + 2
 
