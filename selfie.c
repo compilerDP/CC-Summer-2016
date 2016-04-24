@@ -2702,13 +2702,20 @@ int gr_factor(int* isValue) {
 }
 
 int gr_term(int* isValue) {
-    int ltype;
-    int operatorSymbol;
-    int rtype;
+  int ltype;
+  int lIsValue;
+  int lValue;
+  int operatorSymbol;
+  int rtype;
+  int rIsValue;
+  int rValue;
+
+  lIsValue = 0;
+  rIsValue = 0;
 
   // assert: n = allocatedTemporaries
 
-  ltype = gr_factor(isValue);
+  ltype = gr_factor(isValue);   
 
   // * / or % ?
   while (isStarOrDivOrModulo()) {
@@ -2743,10 +2750,17 @@ int gr_term(int* isValue) {
 }
 
 int gr_simpleExpression(int* isValue) {
-    int sign;
-    int ltype;
-    int operatorSymbol;
-    int rtype;
+  int sign;
+  int ltype;
+  int lIsValue;
+  int lValue;
+  int operatorSymbol;
+  int rtype;
+  int rIsValue;
+  int rValue;
+
+  lIsValue = 0;
+  rIsValue = 0;
 
   // assert: n = allocatedTemporaries
 
@@ -2819,13 +2833,17 @@ int gr_simpleExpression(int* isValue) {
 
 int gr_logicalShift(int* isValue) {
     int ltype;
+    int lIsValue;
+    int lValue;
     int shiftSymbol;
+
+    lIsValue = 0;
 
     // assert: n = allocatedTemporaries
 
     ltype = gr_simpleExpression(isValue);
 
-	// assert: allocatedTemporaries == n + 1
+	  // assert: allocatedTemporaries == n + 1
 
     // << or >>?
     while (isLogicalShift()) {
@@ -2835,42 +2853,45 @@ int gr_logicalShift(int* isValue) {
 
         gr_simpleExpression(isValue);
 
-		// shift immediate
-		if (symbol == SYM_INTEGER) {
+		    // shift immediate
+		    if (symbol == SYM_INTEGER) {
 			
-			if (shiftSymbol == SYM_LLS) 
-				emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), literal, FCT_SLL);
-			else
-				emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), literal, FCT_SRL);
+			    if (shiftSymbol == SYM_LLS) 
+				    emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), literal, FCT_SLL);
+			    else
+				    emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), literal, FCT_SRL);
 
-		    getSymbol();
-		} 
+		        getSymbol();
+		    } 
 
-		// shift register
-		else {
+		    // shift register
+		    else {
 
-		    // assert: allocatedTemporaries == n + 2
+		        // assert: allocatedTemporaries == n + 2
 
-		    if (shiftSymbol == SYM_LLS) 
-		        emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), 0, FCT_SLLV);
+		        if (shiftSymbol == SYM_LLS) 
+		            emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), 0, FCT_SLLV);
 
-		    else
-		        emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), 0, FCT_SRLV);
+		        else
+		            emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), 0, FCT_SRLV);
 
-		    tfree(1);
-		}
-
+		        tfree(1);
+		    }
     }
 
-  // assert: allocatedTemporaries == n + 1
+    // assert: allocatedTemporaries == n + 1
 
   return ltype;
 }
 
 int gr_expression() {
   int ltype;
+  int lIsValue;
+  int lValue;
   int operatorSymbol;
   int rtype;
+  int rIsValue;
+  int rValue;
 
   // create and initialize attribute
   int* isValue;
@@ -2878,6 +2899,9 @@ int gr_expression() {
 
   *isValue = 0;
   *(isValue + 1) = 0;
+
+  lIsValue = 0;
+  rIsValue = 0;
 
   // assert: n = allocatedTemporaries
 
