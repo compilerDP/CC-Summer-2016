@@ -2735,118 +2735,183 @@ int gr_term(int* isValue) {
       rValue = *(isValue + 1);
     }
 
-    if (ltype != rtype)
-        typeWarning(ltype, rtype);
+    if (lIsValue == 1) {
 
-    if (operatorSymbol == SYM_ASTERISK) {
-        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, 0, FCT_MULTU);
-        emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), 0, FCT_MFLO);
+        // left side and right side are constants
+        if (rIsValue == 1) {
 
-    } else if (operatorSymbol == SYM_DIV) {
-        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, 0, FCT_DIVU);
-        emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), 0, FCT_MFLO);
+          if (operatorSymbol == SYM_ASTERISK) 
+              lValue = lValue * rValue;
 
-    } else if (operatorSymbol == SYM_MOD) {
-        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, 0, FCT_DIVU);
-        emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), 0, FCT_MFHI);
-    }
+          else if (operatorSymbol == SYM_DIV) 
+              lValue = lValue / rValue;
 
-    tfree(1);
+          else if (operatorSymbol == SYM_MOD) 
+              lValue = lValue % rValue;  
+  
+          *(isValue + 1) = lValue;
 
-    // assert: allocatedTemporaries == n + 1
-    }
+        // only left side is a constant
+        } else {
+
+          if (ltype != rtype)
+              typeWarning(ltype, rtype);
+
+          if (operatorSymbol == SYM_ASTERISK) {
+              emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, 0, FCT_MULTU);
+              emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), 0, FCT_MFLO);
+
+          } else if (operatorSymbol == SYM_DIV) {
+              emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, 0, FCT_DIVU);
+              emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), 0, FCT_MFLO);
+
+          } else if (operatorSymbol == SYM_MOD) {
+              emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, 0, FCT_DIVU);
+              emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), 0, FCT_MFHI);
+          }
+
+          tfree(1);
+
+          // assert: allocatedTemporaries == n + 1
+        }
+
+    // none or only right side is a constant
+    } else {
+
+          if (ltype != rtype)
+              typeWarning(ltype, rtype);
+
+          if (operatorSymbol == SYM_ASTERISK) {
+              emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, 0, FCT_MULTU);
+              emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), 0, FCT_MFLO);
+
+          } else if (operatorSymbol == SYM_DIV) {
+              emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, 0, FCT_DIVU);
+              emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), 0, FCT_MFLO);
+
+          } else if (operatorSymbol == SYM_MOD) {
+              emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, 0, FCT_DIVU);
+              emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), 0, FCT_MFHI);
+          }
+
+          tfree(1);
+
+          // assert: allocatedTemporaries == n + 1
+        }
+  }
 
   return ltype;
 }
 
 int gr_simpleExpression(int* isValue) {
-  int sign;
-  int ltype;
-  int lIsValue;
-  int lValue;
-  int operatorSymbol;
-  int rtype;
-  int rIsValue;
-  int rValue;
+    int sign;
+    int ltype;
+    int lIsValue;
+    int lValue;
+    int operatorSymbol;
+    int rtype;
+    int rIsValue;
+    int rValue;
 
-  lIsValue = 0;
-  rIsValue = 0;
+    lIsValue = 0;
+    rIsValue = 0;
 
-  // assert: n = allocatedTemporaries
+    // assert: n = allocatedTemporaries
 
-  // optional: -
-  if (symbol == SYM_MINUS) {
-    sign = 1;
+    // optional: -
+    if (symbol == SYM_MINUS) {
+        sign = 1;
 
-    mayBeINTMIN = 1;
-    isINTMIN  = 0;
+        mayBeINTMIN = 1;
+        isINTMIN  = 0;
 
-    getSymbol();
+        getSymbol();
 
-    mayBeINTMIN = 0;
+        mayBeINTMIN = 0;
 
-    if (isINTMIN) {
-      isINTMIN = 0;
+        if (isINTMIN) {
+            isINTMIN = 0;
 
-      // avoids 0-INT_MIN overflow when bootstrapping
-      // even though 0-INT_MIN == INT_MIN
-      sign = 0;
-    }
-  } else
-    sign = 0;
+            // avoids 0-INT_MIN overflow when bootstrapping
+            // even though 0-INT_MIN == INT_MIN
+            sign = 0;
+        }
+    } else
+        sign = 0;
 
-  ltype = gr_term(isValue);
-
-  if (*isValue == 1) {
-    lIsValue = 1;
-    lValue = *(isValue + 1);
-  }
-
-  if (sign) {
-
-      if (ltype != INT_T) {
-        typeWarning(INT_T, ltype);
-
-        ltype = INT_T;
-      }
-
-      emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), 0, FCT_SUBU);
-  }
-
-  // + or -?
-  while (isPlusOrMinus()) {
-    operatorSymbol = symbol;
-
-    getSymbol();
-
-    rtype = gr_term(isValue);
+    ltype = gr_term(isValue);
 
     if (*isValue == 1) {
-      rIsValue = 1;
-      rValue = *(isValue + 1);
+        lIsValue = 1;
+        lValue = *(isValue + 1);
     }
 
-    if (operatorSymbol == SYM_PLUS) {
-        if (ltype == INTSTAR_T) {
-            if (rtype == INT_T)
-                // pointer arithmetic: factor of 2^2 of integer operand
-                emitLeftShiftBy(2);
-        } else if (rtype == INTSTAR_T)
-            typeWarning(ltype, rtype);
+    if (sign) {
 
-        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
+        if (ltype != INT_T) {
+            typeWarning(INT_T, ltype);
 
-    } else if (operatorSymbol == SYM_MINUS) {
-        if (ltype != rtype)
-            typeWarning(ltype, rtype);
+            ltype = INT_T;
+        }
 
-        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_SUBU);
+        emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), 0, FCT_SUBU);
     }
 
-    tfree(1);
+    // + or -?
+    while (isPlusOrMinus()) {
+        operatorSymbol = symbol;
 
-    // assert: allocatedTemporaries == n + 1       
-  }
+        getSymbol();
+
+        rtype = gr_term(isValue);
+
+        if (*isValue == 1) {
+          rIsValue = 1;
+          rValue = *(isValue + 1);
+        }
+
+        if (lIsValue == 1) {
+
+            // left and right side are constants
+            if (rIsValue == 1) {
+
+                if (operatorSymbol == SYM_PLUS)
+                    lValue = lValue + rValue;
+
+                else if (operatorSymbol == SYM_MINUS)
+                    lValue = lValue - rValue;
+
+                *(isValue + 1) = lValue;
+
+            // only left side is a constant
+            } 
+
+        // none or only right side is a constant
+        } //else {
+
+            if (operatorSymbol == SYM_PLUS) {
+                if (ltype == INTSTAR_T) {
+                    if (rtype == INT_T)
+                        // pointer arithmetic: factor of 2^2 of integer operand
+                        emitLeftShiftBy(2);
+                } else if (rtype == INTSTAR_T)
+                    typeWarning(ltype, rtype);
+
+                emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
+
+            } else if (operatorSymbol == SYM_MINUS) {
+                if (ltype != rtype)
+                    typeWarning(ltype, rtype);
+
+                emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_SUBU);
+            }
+
+            tfree(1);
+
+            // assert: allocatedTemporaries == n + 1 
+       // }
+      
+    }// end while
 
     return ltype;
 }
@@ -2856,6 +2921,8 @@ int gr_logicalShift(int* isValue) {
     int lIsValue;
     int lValue;
     int shiftSymbol;
+    int rIsValue;
+    int rValue;
 
     lIsValue = 0;
 
@@ -2878,30 +2945,33 @@ int gr_logicalShift(int* isValue) {
 
         gr_simpleExpression(isValue);
 
+        if (*isValue == 1) {
+            rIsValue = 1;
+            rValue = *(isValue + 1);
+        }
+
+        if (rIsValue == 1) {
 		    // shift immediate
-		    if (symbol == SYM_INTEGER) {
-			
-			    if (shiftSymbol == SYM_LLS) 
-				    emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), literal, FCT_SLL);
-			    else
-				    emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), literal, FCT_SRL);
+		    if (shiftSymbol == SYM_LLS) 
+				emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), rValue, FCT_SLL);
+			else if (shiftSymbol == SYM_LRS)
+				emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), rValue, FCT_SRL);
 
-		        getSymbol();
-		    } 
+		    getSymbol();
 
-		    // shift register
-		    else {
+        // shift register
+        } else {
 
-		        // assert: allocatedTemporaries == n + 2
+		    // assert: allocatedTemporaries == n + 2
 
-		        if (shiftSymbol == SYM_LLS) 
-		            emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), 0, FCT_SLLV);
+		    if (shiftSymbol == SYM_LLS) 
+		        emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), 0, FCT_SLLV);
 
-		        else
-		            emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), 0, FCT_SRLV);
+		    else if (shiftSymbol == SYM_LRS)
+		        emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), 0, FCT_SRLV);
 
-		        tfree(1);
-		    }
+		    tfree(1);
+		}
     }
 
     // assert: allocatedTemporaries == n + 1
