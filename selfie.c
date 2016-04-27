@@ -2769,6 +2769,7 @@ int gr_term(int* isValue) {
         load_integer_after_check(lValue);   // load left value into register
         *isValue = 0;
         *(isValue + 1) = 0;
+        lIsValue = 0;
         leftOperandRegister = currentTemporary();
         rightOperandRegister = previousTemporary();
 
@@ -2884,6 +2885,10 @@ int gr_simpleExpression(int* isValue) {
 
         getSymbol();
 
+        useRegister = 1;
+        leftOperandRegister = 0;
+        rightOperandRegister = 0;
+
         rtype = gr_term(isValue);
 
         if (*isValue == 1) {
@@ -2910,6 +2915,7 @@ int gr_simpleExpression(int* isValue) {
             load_integer_after_check(lValue);   // load left value into register
             *isValue = 0;
             *(isValue + 1) = 0;
+            lIsValue = 0;
             leftOperandRegister = currentTemporary();
             rightOperandRegister = previousTemporary();
 
@@ -2968,6 +2974,12 @@ int gr_logicalShift(int* isValue) {
     int useRegister;
     int leftOperandRegister;
     int rightOperandRegister;
+//    int* isValue;
+
+//    isValue = malloc(2 * SIZEOFINT);
+
+//    *isValue = 0;
+//    *(isValue + 1) = 0;
 
     lIsValue = 0;
 
@@ -2989,6 +3001,8 @@ int gr_logicalShift(int* isValue) {
         getSymbol();
 
         useRegister = 1;
+        leftOperandRegister = 0;
+        rightOperandRegister = 0;
 
         gr_simpleExpression(isValue);
 
@@ -3029,6 +3043,7 @@ int gr_logicalShift(int* isValue) {
             load_integer_after_check(lValue);   // load left value into register
             *isValue = 0;
             *(isValue + 1) = 0;
+            lIsValue = 0;
             leftOperandRegister = currentTemporary();
             rightOperandRegister = previousTemporary();
 
@@ -3054,9 +3069,15 @@ int gr_logicalShift(int* isValue) {
 		}
     }
 
+    if (*isValue == 1) {
+      load_integer_after_check(*(isValue + 1));
+      *isValue = 0;
+      *(isValue + 1) = 0;
+    }
+
     // assert: allocatedTemporaries == n + 1
 
-  return ltype;
+    return ltype;
 }
 
 int gr_expression() {
@@ -3074,12 +3095,6 @@ int gr_expression() {
 
   ltype = gr_logicalShift(isValue);
 
-  if (*isValue == 1) {
-      load_integer_after_check(*(isValue + 1));
-      *isValue = 0;
-      *(isValue + 1) = 0;
-  }
-
   // assert: allocatedTemporaries == n + 1
 
   //optional: ==, !=, <, >, <=, >= simpleExpression
@@ -3089,12 +3104,6 @@ int gr_expression() {
     getSymbol();
 
     rtype = gr_logicalShift(isValue);
-
-    if (*isValue == 1) {
-        load_integer_after_check(*(isValue + 1));
-        *isValue = 0;
-        *(isValue + 1) = 0;
-    }
 
     // assert: allocatedTemporaries == n + 2
 
@@ -6931,9 +6940,9 @@ int main(int argc, int* argv) {
 						                        //T for Tarek
 
     result = 2;
-    result = 3 + 1;
+    result = 2 * 3 + 1 - 4 / 2;
     println();
-    print((int*) "3 + 1 = ");
+    print((int*) "2 * 3 + 1 - 4 / 2 = ");
     print(itoa(result,string_buffer,10,0,0));
     println();
 
