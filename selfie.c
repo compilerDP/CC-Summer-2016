@@ -3015,10 +3015,10 @@ int gr_logicalShift(int* isValue) {
                 rValue = *(isValue + 1);
 
                 if (shiftSymbol == SYM_LLS)
-                    lValue = leftShift(lValue, rValue);
+                    lValue = lValue << rValue;
 
                 else if (shiftSymbol == SYM_LRS)
-                    lValue = rightShift(lValue, rValue);
+                    lValue = lValue >> rValue;
 
                *isValue = 1;
                *(isValue + 1) = lValue;
