@@ -1898,6 +1898,16 @@ int getSymbol() {
 
     symbol = SYM_RBRACE;
 
+  } else if (character == CHAR_LBRACKET) {
+    getCharacter();
+
+    symbol = SYM_LBRACKET;
+
+  } else if (character == CHAR_RBRACKET) {
+    getCharacter();
+
+    symbol = SYM_RBRACKET;
+
   } else if (character == CHAR_COMMA) {
     getCharacter();
 
