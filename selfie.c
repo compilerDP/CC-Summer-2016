@@ -140,6 +140,8 @@ int CHAR_EXCLAMATION  = '!';
 int CHAR_PERCENTAGE   = '%';
 int CHAR_SINGLEQUOTE  = 39; // ASCII code 39 = '
 int CHAR_DOUBLEQUOTE  = '"';
+int CHAR_LBRACKET     = '[';
+int CHAR_RBRACKET     = ']';
 
 int SIZEOFINT     = 4; // must be the same as WORDSIZE
 int SIZEOFINTSTAR = 4; // must be the same as WORDSIZE
@@ -277,6 +279,8 @@ int SYM_CHARACTER    = 26; // character
 int SYM_STRING       = 27; // string
 int SYM_LLS          = 28; // <<
 int SYM_LRS          = 29; // >>
+int SYM_LBRACKET     = 30; // [
+int SYM_RBRACKET     = 31; // ]
 
 int* SYMBOLS; // array of strings representing symbols
 
@@ -309,7 +313,7 @@ int  sourceFD   = 0;        // file descriptor of open source file
 
 void initScanner () {
 
-    SYMBOLS = malloc(30 * SIZEOFINTSTAR);
+    SYMBOLS = malloc(32 * SIZEOFINTSTAR);
 
     *(SYMBOLS + SYM_IDENTIFIER)   = (int) "identifier";
     *(SYMBOLS + SYM_INTEGER)      = (int) "integer";
@@ -341,6 +345,8 @@ void initScanner () {
     *(SYMBOLS + SYM_STRING)       = (int) "string";
     *(SYMBOLS + SYM_LLS)          = (int) "<<";
     *(SYMBOLS + SYM_LRS)          = (int) ">>";
+    *(SYMBOLS + SYM_LBRACKET)     = (int) "[";
+    *(SYMBOLS + SYM_RBRACKET)     = (int) "]";
 
     character = CHAR_EOF;
     symbol    = SYM_EOF;
@@ -6915,8 +6921,6 @@ int selfie(int argc, int* argv) {
   return 0;
 }
 
-int result;
-
 int main(int argc, int* argv) {
   initLibrary();
 
@@ -6938,13 +6942,6 @@ int main(int argc, int* argv) {
     println();                                  //D stands for Daniela
     println();                                  //A for Aziz
 						                        //T for Tarek
-
-    result = 2;
-    result = 2 * 3 + 1 - 4 / 2;
-    println();
-    print((int*) "2 * 3 + 1 - 4 / 2 = ");
-    print(itoa(result,string_buffer,10,0,0));
-    println();
 
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
