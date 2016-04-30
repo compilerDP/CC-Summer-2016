@@ -2990,12 +2990,6 @@ int gr_logicalShift(int* isValue) {
     int useRegister;
     int leftOperandRegister;
     int rightOperandRegister;
-//    int* isValue;
-
-//    isValue = malloc(2 * SIZEOFINT);
-
-//    *isValue = 0;
-//    *(isValue + 1) = 0;
 
     lIsValue = 0;
 
