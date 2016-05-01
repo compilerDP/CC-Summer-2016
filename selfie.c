@@ -2605,11 +2605,10 @@ int gr_array(int* variable) {
     // assert: allocatedTemporaries == n + 2
 
     if (indexType == INT_T)
-      // do pointer arithmetic
       emitLeftShiftBy(2);
 
     else if (indexType != INTSTAR_T)
-      typeWarning(INT_T, indexType);
+      typeWarning(INTSTAR_T, indexType);
   }
 
   emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
@@ -2728,7 +2727,7 @@ int gr_factor(int* isValue) {
       // reset return register
       emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
 
-    // array: identifier "[" expression "]"
+    // array: identifier "[" logicalShift "]"
     } else if (symbol == SYM_LBRACKET) {
         getSymbol();
 
@@ -3556,6 +3555,38 @@ void gr_statement() {
 
       if (symbol == SYM_SEMICOLON)
         getSymbol();
+      else
+        syntaxErrorSymbol(SYM_SEMICOLON);
+
+    // array: identifier "[" logicalShift "]" = expression
+    } else if (symbol == SYM_LBRACKET) {
+      getSymbol();
+
+      gr_array(variableOrProcedureName);
+
+      if (symbol != SYM_RBRACKET)
+        syntaxErrorSymbol(SYM_RBRACKET);
+      else
+        getSymbol();
+
+      if (symbol == SYM_ASSIGN) {
+        getSymbol();
+
+        rtype = gr_expression();
+
+        if (rtype != INT_T)
+          typeWarning(INT_T, rtype);
+
+        emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
+
+        tfree(2);
+
+      } else
+        syntaxErrorSymbol(SYM_ASSIGN);
+
+      if (symbol == SYM_SEMICOLON)
+        getSymbol();
+
       else
         syntaxErrorSymbol(SYM_SEMICOLON);
 
@@ -7032,14 +7063,14 @@ int main(int argc, int* argv) {
 						                        //T for Tarek
 
     array = malloc(10 * SIZEOFINT);
-    *array = 1;
-    *(array + 1) = 2 + 0;
-    *(array + 2) = 4;
-    *(array + 3) = array[array[1]];    
+    array[0] = 99;
+    array[1] = 1 + 1;  
+    array[2] = array[1] + 1; 
+    array[3] = array[array[1]] - array[0]; 
 
     println();
-    print((int*)"*(array + 3) = ");
-    print(itoa(*(array + 3), string_buffer, 10, 0, 0));
+    print((int*) "array[3] = ");
+    print(itoa(array[3], string_buffer, 10, 0, 0));
     println(); 
 
     if (selfie(argc, (int*) argv) != 0) {       
