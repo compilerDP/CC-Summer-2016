@@ -469,6 +469,7 @@ void help_procedure_prologue(int localVariables);
 void help_procedure_epilogue(int parameters);
 
 int  gr_call(int* procedure);
+int  gr_array(int* variable, int* isValue);
 int  gr_factor(int* isValue);
 int  gr_term(int* isValue);
 int  gr_simpleExpression(int* isValue);
@@ -2567,6 +2568,39 @@ int gr_call(int* procedure) {
   return type;
 }
 
+int gr_array(int* variable, int* isValue) {
+  int type;
+  int indexType;
+
+  // assert: n = allocatedTemporaries
+
+  type = load_variable(variable);
+
+  // assert: allocatedTemporaries == n + 1
+
+  if (type != INTSTAR_T)
+    typeWarning(INTSTAR_T, type);
+
+  indexType = gr_expression();
+
+  // assert: allocatedTemporaries == n + 2
+
+  if (indexType == INT_T)
+    // do pointer arithmetic
+    emitLeftShiftBy(2);
+
+  else if (indexType != INTSTAR_T)
+    typeWarning(INT_T, indexType);
+
+  emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
+
+  tfree(1);
+
+  // assert: allocatedTemporaries == n + 1
+
+  return type;
+}
+
 int gr_factor(int* isValue) {
   int hasCast;
   int cast;
@@ -2673,6 +2707,26 @@ int gr_factor(int* isValue) {
 
       // reset return register
       emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
+
+    // array: identifier "[" expression "]"
+    } else if (symbol == SYM_LBRACKET) {
+        getSymbol();
+
+        type = gr_array(variableOrProcedureName, isValue);
+
+        if (symbol != SYM_RBRACKET)
+            syntaxErrorSymbol(SYM_RBRACKET);
+        else
+            getSymbol();
+
+        if (type != INTSTAR_T)
+          typeWarning(INTSTAR_T, type);
+
+        // dereference
+        emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
+
+        type = INT_T;
+
     } else
       // variable access: identifier
       type = load_variable(variableOrProcedureName);
@@ -3794,6 +3848,7 @@ void gr_cstar() {
         gr_procedure(variableOrProcedureName, type);
       } else
         syntaxErrorSymbol(SYM_IDENTIFIER);
+
     } else {
       type = gr_type();
 
@@ -3805,6 +3860,7 @@ void gr_cstar() {
         // type identifier "(" procedure declaration or definition
         if (symbol == SYM_LPARENTHESIS)
           gr_procedure(variableOrProcedureName, type);
+
         else {
           allocatedMemory = allocatedMemory + WORDSIZE;
 
@@ -6925,6 +6981,8 @@ int selfie(int argc, int* argv) {
   return 0;
 }
 
+int* array;
+
 int main(int argc, int* argv) {
   initLibrary();
 
@@ -6946,6 +7004,15 @@ int main(int argc, int* argv) {
     println();                                  //D stands for Daniela
     println();                                  //A for Aziz
 						                        //T for Tarek
+
+    array = malloc(10 * SIZEOFINT);
+    *(array + 1) = 2;
+    *(array + 2) = array[0+1];
+
+    println();
+    print((int*)"*(array + 2) = ");
+    print(itoa(*(array + 2), string_buffer, 10, 0, 0));
+    println(); 
 
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
