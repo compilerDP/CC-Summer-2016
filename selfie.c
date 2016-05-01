@@ -469,7 +469,7 @@ void help_procedure_prologue(int localVariables);
 void help_procedure_epilogue(int parameters);
 
 int  gr_call(int* procedure);
-int  gr_array(int* variable, int* isValue);
+int  gr_array(int* variable);
 int  gr_factor(int* isValue);
 int  gr_term(int* isValue);
 int  gr_simpleExpression(int* isValue);
@@ -2568,9 +2568,16 @@ int gr_call(int* procedure) {
   return type;
 }
 
-int gr_array(int* variable, int* isValue) {
+int gr_array(int* variable) {
   int type;
   int indexType;
+  int index;
+  int* isValue;
+
+  isValue = malloc(2 * SIZEOFINT);
+
+  *isValue = 0;
+  *(isValue + 1) = 0;
 
   // assert: n = allocatedTemporaries
 
@@ -2581,16 +2588,26 @@ int gr_array(int* variable, int* isValue) {
   if (type != INTSTAR_T)
     typeWarning(INTSTAR_T, type);
 
-  indexType = gr_expression();
+  indexType = gr_logicalShift(isValue);
 
-  // assert: allocatedTemporaries == n + 2
+  if (*isValue == 1) {
+    index = *(isValue + 1) * SIZEOFINT;
 
-  if (indexType == INT_T)
-    // do pointer arithmetic
-    emitLeftShiftBy(2);
+    load_integer(index);
 
-  else if (indexType != INTSTAR_T)
-    typeWarning(INT_T, indexType);
+    *isValue = 0;
+    *(isValue) = 0;
+
+  } else {
+    // assert: allocatedTemporaries == n + 2
+
+    if (indexType == INT_T)
+      // do pointer arithmetic
+      emitLeftShiftBy(2);
+
+    else if (indexType != INTSTAR_T)
+      typeWarning(INT_T, indexType);
+  }
 
   emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
 
@@ -2712,7 +2729,7 @@ int gr_factor(int* isValue) {
     } else if (symbol == SYM_LBRACKET) {
         getSymbol();
 
-        type = gr_array(variableOrProcedureName, isValue);
+        type = gr_array(variableOrProcedureName);
 
         if (symbol != SYM_RBRACKET)
             syntaxErrorSymbol(SYM_RBRACKET);
@@ -3091,10 +3108,10 @@ int gr_logicalShift(int* isValue) {
             } else {
 
                 // shift immediate
-		        if (shiftSymbol == SYM_LLS) 
-				    emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), *(isValue + 1), FCT_SLL);
-			    else if (shiftSymbol == SYM_LRS)
-				    emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), *(isValue + 1), FCT_SRL);
+		            if (shiftSymbol == SYM_LLS) 
+				        emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), *(isValue + 1), FCT_SLL);
+			        else if (shiftSymbol == SYM_LRS)
+				        emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), *(isValue + 1), FCT_SRL);
 
                 useRegister = 0;
                 *isValue = 0;
@@ -3121,22 +3138,16 @@ int gr_logicalShift(int* isValue) {
         if (useRegister == 1) {
             // shift register
         
-		    // assert: allocatedTemporaries == n + 2
+		        // assert: allocatedTemporaries == n + 2
 
-		    if (shiftSymbol == SYM_LLS) 
-		        emitRFormat(OP_SPECIAL, rightOperandRegister, leftOperandRegister, previousTemporary(), 0, FCT_SLLV);
+		        if (shiftSymbol == SYM_LLS) 
+		            emitRFormat(OP_SPECIAL, rightOperandRegister, leftOperandRegister, previousTemporary(), 0, FCT_SLLV);
 
-		    else if (shiftSymbol == SYM_LRS)
-		        emitRFormat(OP_SPECIAL, rightOperandRegister, leftOperandRegister, previousTemporary(), 0, FCT_SRLV);
+		        else if (shiftSymbol == SYM_LRS)
+		            emitRFormat(OP_SPECIAL, rightOperandRegister, leftOperandRegister, previousTemporary(), 0, FCT_SRLV);
 
-		    tfree(1);
-		}
-    }
-
-    if (*isValue == 1) {
-      load_integer_after_check(*(isValue + 1));
-      *isValue = 0;
-      *(isValue + 1) = 0;
+		        tfree(1);
+		    }
     }
 
     // assert: allocatedTemporaries == n + 1
@@ -3159,6 +3170,12 @@ int gr_expression() {
 
   ltype = gr_logicalShift(isValue);
 
+  if (*isValue == 1) {
+    load_integer_after_check(*(isValue + 1));
+    *isValue = 0;
+    *(isValue + 1) = 0;
+  }
+
   // assert: allocatedTemporaries == n + 1
 
   //optional: ==, !=, <, >, <=, >= simpleExpression
@@ -3168,6 +3185,12 @@ int gr_expression() {
     getSymbol();
 
     rtype = gr_logicalShift(isValue);
+
+    if (*isValue == 1) {
+      load_integer_after_check(*(isValue + 1));
+      *isValue = 0;
+      *(isValue + 1) = 0;
+    }
 
     // assert: allocatedTemporaries == n + 2
 
@@ -7006,12 +7029,14 @@ int main(int argc, int* argv) {
 						                        //T for Tarek
 
     array = malloc(10 * SIZEOFINT);
-    *(array + 1) = 2;
-    *(array + 2) = array[0+1];
+    *array = 1;
+    *(array + 1) = 2 + 0;
+    *(array + 2) = 4;
+    *(array + 3) = array[array[1]];    
 
     println();
-    print((int*)"*(array + 2) = ");
-    print(itoa(*(array + 2), string_buffer, 10, 0, 0));
+    print((int*)"*(array + 3) = ");
+    print(itoa(*(array + 3), string_buffer, 10, 0, 0));
     println(); 
 
     if (selfie(argc, (int*) argv) != 0) {       

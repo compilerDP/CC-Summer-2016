@@ -23,7 +23,7 @@ type             = "int" [ "*" ] .
 
 cast             = "(" type ")" .
 
-array            = identifier "[" expression "]" .
+array            = identifier "[" logicalShift "]" .
 
 call             = identifier "(" [ expression { "," expression } ] ")" .
 
@@ -57,7 +57,7 @@ if               = "if" "(" expression ")"
 
 return           = "return" [ expression ] .
 
-statement        = ( [ "*" ] identifier | array | "*" "(" expression ")" ) "="
+statement        = ( [ "*" ] identifier | identifier "[" logicalShift "]" | "*" "(" expression ")" ) "="
                       expression ";" |
                     call ";" | 
                     while | 
