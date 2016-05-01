@@ -2593,6 +2593,9 @@ int gr_array(int* variable) {
   if (*isValue == 1) {
     index = *(isValue + 1) * SIZEOFINT;
 
+    if (index < 0)
+      index = 0;
+
     load_integer(index);
 
     *isValue = 0;
