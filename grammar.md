@@ -69,6 +69,7 @@ variable         = type identifier [ "[" integer "]" ] .
 procedure        = "(" [ variable { "," variable } ] ")" 
                     ( ";" | "{" { variable ";" } { statement } "}" ) .
 
-cstar            = { type identifier [ "[" integer "]" ] [ "=" [ cast ] [ "-" ] literal ] ";" |
+cstar            = { type identifier [ "=" [ cast ] [ "-" ] literal ] ";" | 
+                   type identifier "[" integer "]" ";" |
                    ( "void" | type ) identifier procedure } .
 ```
