@@ -486,7 +486,7 @@ void gr_if(int* isValue);
 void gr_return(int returnType, int* isValue);
 void gr_statement(int* isValue);
 int  gr_type();
-void gr_variable(int offset);
+int gr_variable(int offset);
 void gr_initialization(int* name, int offset, int type);
 void gr_procedure(int* procedure, int returnType, int* isValue);
 void gr_cstar();
@@ -2600,6 +2600,11 @@ int gr_array(int* variable, int* isValue) {
 
   tfree(1);
 
+  if (symbol == SYM_RBRACKET) 
+    getSymbol();
+  else
+    syntaxErrorSymbol(SYM_RBRACKET);
+
   return getElemType(entry);
 }
 
@@ -2715,11 +2720,6 @@ int gr_factor(int* isValue) {
       getSymbol();
 
       type = gr_array(variableOrProcedureName, isValue);
-
-      if (symbol == SYM_RBRACKET) 
-        getSymbol();
-      else
-        syntaxErrorSymbol(SYM_RBRACKET);
       
       emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
 
@@ -3509,6 +3509,7 @@ void gr_statement(int* isValue) {
     } else
       syntaxErrorSymbol(SYM_LPARENTHESIS);
   }
+
   // identifier "=" expression | call
   else if (symbol == SYM_IDENTIFIER) {
     variableOrProcedureName = identifier;
@@ -3528,6 +3529,31 @@ void gr_statement(int* isValue) {
         getSymbol();
       else
         syntaxErrorSymbol(SYM_SEMICOLON);
+
+    // identifier "[" ... "]" = expression
+    } else if (symbol == SYM_LBRACKET) {
+      getSymbol();
+
+      ltype = gr_array(variableOrProcedureName, isValue);
+
+      if (symbol == SYM_ASSIGN) {
+        getSymbol();
+
+        rtype = gr_expression(isValue);
+
+        if (ltype != rtype)
+          typeWarning(ltype, rtype);
+
+        emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
+
+        tfree(1);
+
+        if (symbol == SYM_SEMICOLON)
+          getSymbol();
+        else
+          syntaxErrorSymbol(SYM_SEMICOLON);
+      } else
+        syntaxErrorSymbol(SYM_ASSIGN);
 
     // identifier = expression
     } else if (symbol == SYM_ASSIGN) {
@@ -3593,20 +3619,48 @@ int gr_type() {
   return type;
 }
 
-void gr_variable(int offset) {
+int gr_variable(int offset) {
   int type;
+  int arraySize;
+  int* variable;
+
+  arraySize = 0;
 
   type = gr_type();
 
   if (symbol == SYM_IDENTIFIER) {
-    createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, 0, 0);
+    variable = identifier;
 
     getSymbol();
+
+    if (symbol == SYM_LBRACKET) {
+      getSymbol();
+    
+      if (symbol == SYM_INTEGER) {
+        arraySize = literal;
+        offset = offset - ((arraySize - 1) * WORDSIZE);
+
+        createSymbolTableEntry(LOCAL_TABLE, variable, lineNumber, VARIABLE, ARRAY_T, 0, offset, arraySize, type);
+
+        getSymbol();
+
+        if (symbol == SYM_RBRACKET)
+          getSymbol();
+        else
+          syntaxErrorSymbol(SYM_RBRACKET);
+      } else
+        syntaxErrorSymbol(SYM_INTEGER); 
+
+    } else 
+      createSymbolTableEntry(LOCAL_TABLE, variable, lineNumber, VARIABLE, type, 0, offset, 0, 0);
+
   } else {
     syntaxErrorSymbol(SYM_IDENTIFIER);
 
     createSymbolTableEntry(LOCAL_TABLE, (int*) "missing variable name", lineNumber, VARIABLE, type, 0, offset, 0, 0);
   }
+
+  return arraySize;
 }
 
 void gr_initialization(int* name, int offset, int type) {
@@ -3690,6 +3744,7 @@ void gr_procedure(int* procedure, int returnType, int* isValue) {
   int parameters;
   int localVariables;
   int functionStart;
+  int arraySize;
   int* entry;
 
   currentProcedureName = procedure;
@@ -3776,9 +3831,13 @@ void gr_procedure(int* procedure, int returnType, int* isValue) {
     localVariables = 0;
 
     while (symbol == SYM_INT) {
+      arraySize = 0;
       localVariables = localVariables + 1;
 
-      gr_variable(-localVariables * WORDSIZE);
+      arraySize = gr_variable(-localVariables * WORDSIZE);
+
+      if (arraySize > 1)
+        localVariables = localVariables + arraySize - 1;
 
       if (symbol == SYM_SEMICOLON)
         getSymbol();
@@ -4369,7 +4428,11 @@ void emitGlobalsStrings() {
     if (getClass(entry) == VARIABLE) {
       storeBinary(binaryLength, getValue(entry));
 
-      binaryLength = binaryLength + WORDSIZE;
+      if (getType(entry) == ARRAY_T)
+        binaryLength = binaryLength + (WORDSIZE * getArraySize(entry));
+      else
+        binaryLength = binaryLength + WORDSIZE;
+
     } else if (getClass(entry) == STRING)
       binaryLength = copyStringToBinary(getString(entry), binaryLength);
 
@@ -7013,9 +7076,10 @@ int selfie(int argc, int* argv) {
   return 0;
 }
 
-int array[1];
-
 int main(int argc, int* argv) {
+  int array[10];
+  int x;
+  x = 7;
   initLibrary();
 
   initScanner();
@@ -7037,10 +7101,14 @@ int main(int argc, int* argv) {
     println();                                  //A for Aziz
 						                        //T for Tarek
 
-//    println();
-//    print((int*) "2 / 2 + 1 * 3 - 2 % 10 = ");
-//    print(itoa(a,string_buffer,10,0,0));
-//    println();
+    array[0] = 0;
+    array[1 + 0]  = 1;
+    array[array[1] + 8] = array[array[5-4]] + 9 +x; 
+
+    println();
+    print((int*) "array[9] = ");
+    print(itoa(array[9],string_buffer,10,0,0));
+    println();
 
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
