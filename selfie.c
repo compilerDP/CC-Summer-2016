@@ -3742,6 +3742,7 @@ void gr_initialization(int* name, int offset, int type) {
 void gr_procedure(int* procedure, int returnType, int* isValue) {
   int numberOfParameters;
   int parameters;
+  int parameterOffset;
   int localVariables;
   int functionStart;
   int arraySize;
@@ -3771,10 +3772,17 @@ void gr_procedure(int* procedure, int returnType, int* isValue) {
       entry = local_symbol_table;
 
       parameters = 0;
+      parameterOffset = -1;
 
       while (parameters < numberOfParameters) {
         // 8 bytes offset to skip frame pointer and link
-        setAddress(entry, parameters * WORDSIZE + 2 * WORDSIZE);
+        if (getType(entry) == ARRAY_T) {
+          parameterOffset = parameterOffset + getArraySize(entry);
+
+        } else
+          parameterOffset = parameterOffset + 1;
+ 
+        setAddress(entry, parameterOffset * WORDSIZE + 2 * WORDSIZE);
 
         parameters = parameters + 1;
         entry    = getNextEntry(entry);
