@@ -140,6 +140,8 @@ int CHAR_EXCLAMATION  = '!';
 int CHAR_PERCENTAGE   = '%';
 int CHAR_SINGLEQUOTE  = 39; // ASCII code 39 = '
 int CHAR_DOUBLEQUOTE  = '"';
+int CHAR_LBRACKET     = '[';
+int CHAR_RBRACKET     = ']';
 
 int SIZEOFINT     = 4; // must be the same as WORDSIZE
 int SIZEOFINTSTAR = 4; // must be the same as WORDSIZE
@@ -277,6 +279,8 @@ int SYM_CHARACTER    = 26; // character
 int SYM_STRING       = 27; // string
 int SYM_LLS          = 28; // <<
 int SYM_LRS          = 29; // >>
+int SYM_LBRACKET     = 30; // [
+int SYM_RBRACKET     = 31; // ]
 
 int* SYMBOLS; // array of strings representing symbols
 
@@ -309,7 +313,7 @@ int  sourceFD   = 0;        // file descriptor of open source file
 
 void initScanner () {
 
-    SYMBOLS = malloc(30 * SIZEOFINTSTAR);
+    SYMBOLS = malloc(32 * SIZEOFINTSTAR);
 
     *(SYMBOLS + SYM_IDENTIFIER)   = (int) "identifier";
     *(SYMBOLS + SYM_INTEGER)      = (int) "integer";
@@ -341,6 +345,8 @@ void initScanner () {
     *(SYMBOLS + SYM_STRING)       = (int) "string";
     *(SYMBOLS + SYM_LLS)          = (int) "<<";
     *(SYMBOLS + SYM_LRS)          = (int) ">>";
+    *(SYMBOLS + SYM_LBRACKET)     = (int) "[";
+    *(SYMBOLS + SYM_RBRACKET)     = (int) "]";
 
     character = CHAR_EOF;
     symbol    = SYM_EOF;
@@ -1898,6 +1904,16 @@ int getSymbol() {
     getCharacter();
 
     symbol = SYM_RBRACE;
+
+  } else if (character == CHAR_LBRACKET) {
+    getCharacter();
+
+    symbol = SYM_LBRACKET;
+
+  } else if (character == CHAR_RBRACKET) {
+    getCharacter();
+
+    symbol = SYM_RBRACKET;
 
   } else if (character == CHAR_COMMA) {
     getCharacter();
@@ -3761,8 +3777,11 @@ void gr_procedure(int* procedure, int returnType, int* isValue) {
 
 void gr_cstar() {
   int type;
+  int arraySize;
   int* variableOrProcedureName;
   int* isValue;
+
+  arraySize = 0;
 
   isValue = malloc(2 * SIZEOFINT);
 
@@ -3793,6 +3812,8 @@ void gr_cstar() {
         gr_procedure(variableOrProcedureName, type, isValue);
       } else
         syntaxErrorSymbol(SYM_IDENTIFIER);
+
+    // type identifier
     } else {
       type = gr_type();
 
@@ -3804,7 +3825,34 @@ void gr_cstar() {
         // type identifier "(" procedure declaration or definition
         if (symbol == SYM_LPARENTHESIS)
           gr_procedure(variableOrProcedureName, type, isValue);
-        else {
+
+        // type identifier "[" integer "]" ";" 
+        else if (symbol == SYM_LBRACKET) {
+          getSymbol();
+
+          if (symbol == SYM_INTEGER) {
+            arraySize = literal;
+
+            allocatedMemory = allocatedMemory + (WORDSIZE * arraySize);
+
+            getSymbol();
+
+            if (symbol == SYM_RBRACKET) {
+              getSymbol();
+
+              if (symbol == SYM_SEMICOLON) {
+                createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, ARRAY_T, 0, -allocatedMemory, arraySize, type);
+
+                getSymbol();
+
+              } else
+                syntaxErrorSymbol(SYM_SEMICOLON);
+            } else
+              syntaxErrorSymbol(SYM_RBRACKET);
+          } else
+            syntaxErrorSymbol(SYM_INTEGER);         
+
+        } else {
           allocatedMemory = allocatedMemory + WORDSIZE;
 
           // type identifier ";" global variable declaration
@@ -6923,7 +6971,9 @@ int selfie(int argc, int* argv) {
 
   return 0;
 }
-int a;
+
+int array[1];
+
 int main(int argc, int* argv) {
   initLibrary();
 
@@ -6945,11 +6995,11 @@ int main(int argc, int* argv) {
     println();                                  //D stands for Daniela
     println();                                  //A for Aziz
 						                        //T for Tarek
-a = (3 + 4 - 3) / 2 * 3;
-    println();
+
+//    println();
 //    print((int*) "2 / 2 + 1 * 3 - 2 % 10 = ");
-    print(itoa(a,string_buffer,10,0,0));
-    println();
+//    print(itoa(a,string_buffer,10,0,0));
+//    println();
 
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
