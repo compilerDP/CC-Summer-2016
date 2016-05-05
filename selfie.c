@@ -283,6 +283,7 @@ int SYM_LBRACKET     = 30; // [
 int SYM_RBRACKET     = 31; // ]
 
 int* SYMBOLS; // array of strings representing symbols
+//int SYMBOLS[32]; // array of strings representing symbols
 
 int maxIdentifierLength = 64; // maximum number of characters in an identifier
 int maxIntegerLength    = 10; // maximum number of characters in an integer
@@ -312,7 +313,6 @@ int  sourceFD   = 0;        // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
-
     SYMBOLS = malloc(32 * SIZEOFINTSTAR);
 
     *(SYMBOLS + SYM_IDENTIFIER)   = (int) "identifier";
@@ -347,6 +347,39 @@ void initScanner () {
     *(SYMBOLS + SYM_LRS)          = (int) ">>";
     *(SYMBOLS + SYM_LBRACKET)     = (int) "[";
     *(SYMBOLS + SYM_RBRACKET)     = (int) "]";
+
+//    SYMBOLS[SYM_IDENTIFIER]   = (int) "identifier";
+//    SYMBOLS[SYM_INTEGER]      = (int) "integer";
+//    SYMBOLS[SYM_VOID]         = (int) "void";
+//    SYMBOLS[SYM_INT]          = (int) "int";
+//    SYMBOLS[SYM_SEMICOLON]    = (int) ";";
+//    SYMBOLS[SYM_IF]           = (int) "if";
+//    SYMBOLS[SYM_ELSE]         = (int) "else";
+//    SYMBOLS[SYM_PLUS]         = (int) "+";
+//    SYMBOLS[SYM_MINUS]        = (int) "-";
+//    SYMBOLS[SYM_ASTERISK]     = (int) "*";
+//    SYMBOLS[SYM_DIV]          = (int) "/";
+//    SYMBOLS[SYM_EQUALITY]     = (int) "==";
+//    SYMBOLS[SYM_ASSIGN]       = (int) "=";
+//    SYMBOLS[SYM_LPARENTHESIS] = (int) "(";
+//    SYMBOLS[SYM_RPARENTHESIS] = (int) ")";
+//    SYMBOLS[SYM_LBRACE]       = (int) "{";
+//    SYMBOLS[SYM_RBRACE]       = (int) "}";
+//    SYMBOLS[SYM_WHILE]        = (int) "while";
+//    SYMBOLS[SYM_RETURN]       = (int) "return";
+//    SYMBOLS[SYM_COMMA]        = (int) ",";
+//    SYMBOLS[SYM_LT]           = (int) "<";
+//    SYMBOLS[SYM_LEQ]          = (int) "<=";
+//    SYMBOLS[SYM_GT]           = (int) ">";
+//    SYMBOLS[SYM_GEQ]          = (int) ">=";
+//    SYMBOLS[SYM_NOTEQ]        = (int) "!=";
+//    SYMBOLS[SYM_MOD]          = (int) "%";
+//    SYMBOLS[SYM_CHARACTER]    = (int) "character";
+//    SYMBOLS[SYM_STRING]       = (int) "string";
+//    SYMBOLS[SYM_LLS]          = (int) "<<";
+//    SYMBOLS[SYM_LRS]          = (int) ">>";
+//    SYMBOLS[SYM_LBRACKET]     = (int) "[";
+//    SYMBOLS[SYM_RBRACKET]     = (int) "]";
 
     character = CHAR_EOF;
     symbol    = SYM_EOF;
@@ -1544,6 +1577,7 @@ void printSymbol(int symbol) {
     print((int*) "end of file");
   else
     print((int*) *(SYMBOLS + symbol));
+//    print((int*) SYMBOLS[symbol]);
 
   putCharacter(CHAR_DOUBLEQUOTE);
 }
@@ -1704,6 +1738,7 @@ int isNotDoubleQuoteOrEOF() {
 
 int identifierStringMatch(int keyword) {
   return stringCompare(identifier, (int*) *(SYMBOLS + keyword));
+//  return stringCompare(identifier, (int*) SYMBOLS[keyword]);
 }
 
 int identifierOrKeyword() {
@@ -2320,6 +2355,8 @@ int* putType(int type) {
     return (int*) "int*";
   else if (type == VOID_T)
     return (int*) "void";
+  else if (type == ARRAY_T)
+    return (int*) "array";
   else
     return (int*) "unknown";
 }
@@ -2581,52 +2618,79 @@ int gr_array(int* variable) {
   int type;
   int indexType;
   int index;
+  int arraySize;
   int* isValue;
+  int* entry;
+
+  // assert: n = allocatedTemporaries
 
   isValue = malloc(2 * SIZEOFINT);
 
   *isValue = 0;
   *(isValue + 1) = 0;
 
-  // assert: n = allocatedTemporaries
+  entry = getVariable(variable);
+  type = getType(entry);
+  arraySize = getArraySize(entry);
 
-  type = load_variable(variable);
+  if (type == ARRAY_T) {
 
-  // assert: allocatedTemporaries == n + 1
+    indexType = gr_logicalShift(isValue);
 
-  if (type != INTSTAR_T)
-    typeWarning(INTSTAR_T, type);
+    if (*isValue == 1) {
 
-  indexType = gr_logicalShift(isValue);
+      // assert: allocatedTemporaries == n
 
-  if (*isValue == 1) {
-    index = *(isValue + 1) * SIZEOFINT;
+      index = *(isValue + 1);
+      *isValue = 0;
+      *(isValue) = 0;
 
-    if (index < 0)
-      index = 0;
+      if (index < 0) {
+        syntaxErrorMessage((int*) "array index out of bound");
 
-    load_integer(index);
+        exit(-1);
 
-    *isValue = 0;
-    *(isValue) = 0;
+      } else if (index >= arraySize) {
+        syntaxErrorMessage((int*) "array index out of bound");
 
-  } else {
-    // assert: allocatedTemporaries == n + 2
+        exit(-1);
+      }
 
-    if (indexType == INT_T)
-      emitLeftShiftBy(2);
+      index = getAddress(entry) + (index * WORDSIZE);
 
-    else if (indexType != INTSTAR_T)
-      typeWarning(INTSTAR_T, indexType);
-  }
+      talloc();
 
-  emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
+      emitIFormat(OP_LW, getScope(entry), currentTemporary(), index);
 
-  tfree(1);
+      // assert: allocatedTemporaries == n + 1
 
-  // assert: allocatedTemporaries == n + 1
+    } else {
 
-  return type;
+      // assert: allocatedTemporaries == n + 1
+
+      if (indexType == INT_T)
+        emitLeftShiftBy(2);
+
+      else if (indexType != INTSTAR_T)
+        typeWarning(INTSTAR_T, indexType);
+
+      talloc();
+
+      emitIFormat(OP_LW, getScope(entry), currentTemporary(), getAddress(entry));
+
+      // assert: allocatedTemporaries == n + 2
+
+      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
+
+      tfree(1);
+    }
+
+    // assert: allocatedTemporaries == n + 1
+
+  } else
+    typeWarning(ARRAY_T, type);
+
+  return getElementType(entry);
 }
 
 int gr_factor(int* isValue) {
@@ -2742,18 +2806,12 @@ int gr_factor(int* isValue) {
 
         type = gr_array(variableOrProcedureName);
 
-        if (symbol != SYM_RBRACKET)
-            syntaxErrorSymbol(SYM_RBRACKET);
-        else
+        if (symbol == SYM_RBRACKET)
             getSymbol();
+        else
+            syntaxErrorSymbol(SYM_RBRACKET);
 
-        if (type != INTSTAR_T)
-          typeWarning(INTSTAR_T, type);
-
-        // dereference
         emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
-
-        type = INT_T;
 
     } else
       // variable access: identifier
@@ -3571,33 +3629,33 @@ void gr_statement() {
     } else if (symbol == SYM_LBRACKET) {
       getSymbol();
 
-      gr_array(variableOrProcedureName);
+      ltype = gr_array(variableOrProcedureName);
 
-      if (symbol != SYM_RBRACKET)
-        syntaxErrorSymbol(SYM_RBRACKET);
-      else
+      if (symbol == SYM_RBRACKET) {
         getSymbol();
 
-      if (symbol == SYM_ASSIGN) {
-        getSymbol();
+        if (symbol == SYM_ASSIGN) {
+          getSymbol();
 
-        rtype = gr_expression();
+          rtype = gr_expression();
 
-        if (rtype != INT_T)
-          typeWarning(INT_T, rtype);
+          if (ltype != rtype)
+            typeWarning(ltype, rtype);
 
-        emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
+          emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
 
-        tfree(2);
+          tfree(2);
 
+        } else
+          syntaxErrorSymbol(SYM_ASSIGN);
+
+        if (symbol == SYM_SEMICOLON)
+          getSymbol();
+
+        else
+          syntaxErrorSymbol(SYM_SEMICOLON);
       } else
-        syntaxErrorSymbol(SYM_ASSIGN);
-
-      if (symbol == SYM_SEMICOLON)
-        getSymbol();
-
-      else
-        syntaxErrorSymbol(SYM_SEMICOLON);
+        syntaxErrorSymbol(SYM_RBRACKET);
 
     // identifier = expression
     } else if (symbol == SYM_ASSIGN) {
@@ -3891,8 +3949,6 @@ void gr_cstar() {
   int* variableOrProcedureName;
   int arraySize;
 
-  arraySize = 0;
-
   while (symbol != SYM_EOF) {
     while (lookForType()) {
       syntaxErrorUnexpected();
@@ -3942,15 +3998,15 @@ void gr_cstar() {
             getSymbol();
 
             if (symbol == SYM_RBRACKET) {
+              createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, ARRAY_T, 0, -allocatedMemory, arraySize, type);
+
               getSymbol();
 
-              if (symbol == SYM_SEMICOLON) {
-                createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, arraySize, type);
-
+              if (symbol == SYM_SEMICOLON) 
                 getSymbol();
 
-              } else
-                  syntaxErrorSymbol(SYM_SEMICOLON);
+              else
+                syntaxErrorSymbol(SYM_SEMICOLON);
             } else
                 syntaxErrorSymbol(SYM_RBRACKET);
           } else
@@ -7076,7 +7132,7 @@ int selfie(int argc, int* argv) {
   return 0;
 }
 
-int* array;
+int array[10];
 
 int main(int argc, int* argv) {
   initLibrary();
@@ -7100,7 +7156,7 @@ int main(int argc, int* argv) {
     println();                                  //A for Aziz
 						                        //T for Tarek
 
-    array = malloc(10 * SIZEOFINT);
+//    array = malloc(10 * SIZEOFINT);
     array[0] = 9;
     array[1] = 1 + 1;  
     array[2] = array[1] + 1; 
@@ -7113,7 +7169,7 @@ int main(int argc, int* argv) {
 
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
-        print((int*) ": usage: selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
+//        print((int*) ": usage: selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
         println();
     }
 
