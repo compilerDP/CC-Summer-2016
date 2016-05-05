@@ -2576,6 +2576,33 @@ int gr_call(int* procedure, int* isValue) {
   return type;
 }
 
+int gr_array(int* variable, int* isValue) {
+  int indexType;
+  int* entry;
+
+  entry = getVariable(variable);
+
+  if (getType(entry) != ARRAY_T)
+    typeWarning(ARRAY_T, getType(entry));
+
+  talloc();
+
+  emitIFormat(OP_LW, getScope(entry), currentTemporary(), getAddress(entry));
+
+  indexType = gr_expression(isValue);  
+
+  if (indexType == INT_T)
+    emitLeftShiftBy(2);
+  else
+    typeWarning(INT_T, indexType);
+
+  emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
+
+  tfree(1);
+
+  return getElemType(entry);
+}
+
 int gr_factor(int* isValue) {
   int hasCast;
   int cast;
@@ -2682,6 +2709,20 @@ int gr_factor(int* isValue) {
 
       // reset return register
       emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
+
+    // array: identifier "[" ... "]"
+    } else if (symbol == SYM_LBRACKET) {
+      getSymbol();
+
+      type = gr_array(variableOrProcedureName, isValue);
+
+      if (symbol == SYM_RBRACKET) 
+        getSymbol();
+      else
+        syntaxErrorSymbol(SYM_RBRACKET);
+      
+      emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
+
     } else
       // variable access: identifier
       type = load_variable(variableOrProcedureName);
