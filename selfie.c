@@ -348,6 +348,39 @@ void initScanner () {
     *(SYMBOLS + SYM_LBRACKET)     = (int) "[";
     *(SYMBOLS + SYM_RBRACKET)     = (int) "]";
 
+//    SYMBOLS[SYM_IDENTIFIER]   = (int) "identifier";
+//    SYMBOLS[SYM_INTEGER]      = (int) "integer";
+//    SYMBOLS[SYM_VOID]         = (int) "void";
+//    SYMBOLS[SYM_INT]          = (int) "int";
+//    SYMBOLS[SYM_SEMICOLON]    = (int) ";";
+//    SYMBOLS[SYM_IF]           = (int) "if";
+//    SYMBOLS[SYM_ELSE]         = (int) "else";
+//    SYMBOLS[SYM_PLUS]         = (int) "+";
+//    SYMBOLS[SYM_MINUS]        = (int) "-";
+//    SYMBOLS[SYM_ASTERISK]     = (int) "*";
+//    SYMBOLS[SYM_DIV]          = (int) "/";
+//    SYMBOLS[SYM_EQUALITY]     = (int) "==";
+//    SYMBOLS[SYM_ASSIGN]       = (int) "=";
+//    SYMBOLS[SYM_LPARENTHESIS] = (int) "(";
+//    SYMBOLS[SYM_RPARENTHESIS] = (int) ")";
+//    SYMBOLS[SYM_LBRACE]       = (int) "{";
+//    SYMBOLS[SYM_RBRACE]       = (int) "}";
+//    SYMBOLS[SYM_WHILE]        = (int) "while";
+//    SYMBOLS[SYM_RETURN]       = (int) "return";
+//    SYMBOLS[SYM_COMMA]        = (int) ",";
+//    SYMBOLS[SYM_LT]           = (int) "<";
+//    SYMBOLS[SYM_LEQ]          = (int) "<=";
+//    SYMBOLS[SYM_GT]           = (int) ">";
+//    SYMBOLS[SYM_GEQ]          = (int) ">=";
+//    SYMBOLS[SYM_NOTEQ]        = (int) "!=";
+//    SYMBOLS[SYM_MOD]          = (int) "%";
+//    SYMBOLS[SYM_CHARACTER]    = (int) "character";
+//    SYMBOLS[SYM_STRING]       = (int) "string";
+//    SYMBOLS[SYM_LLS]          = (int) "<<";
+//    SYMBOLS[SYM_LRS]          = (int) ">>";
+//    SYMBOLS[SYM_LBRACKET]     = (int) "[";
+//    SYMBOLS[SYM_RBRACKET]     = (int) "]";
+
     character = CHAR_EOF;
     symbol    = SYM_EOF;
 }
@@ -476,6 +509,7 @@ void help_procedure_prologue(int localVariables);
 void help_procedure_epilogue(int parameters);
 
 int  gr_call(int* procedure, int* isValue);
+int  gr_array(int* variable, int* isValue);
 int  gr_factor(int* isValue);
 int  gr_term(int* isValue);
 int  gr_simpleExpression(int* isValue);
@@ -3546,7 +3580,7 @@ void gr_statement(int* isValue) {
 
         emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
 
-        tfree(1);
+        tfree(2);
 
         if (symbol == SYM_SEMICOLON)
           getSymbol();
@@ -3742,7 +3776,7 @@ void gr_initialization(int* name, int offset, int type) {
 void gr_procedure(int* procedure, int returnType, int* isValue) {
   int numberOfParameters;
   int parameters;
-  int parameterOffset;
+//  int parameterOffset;
   int localVariables;
   int functionStart;
   int arraySize;
@@ -3772,17 +3806,18 @@ void gr_procedure(int* procedure, int returnType, int* isValue) {
       entry = local_symbol_table;
 
       parameters = 0;
-      parameterOffset = -1;
+//      parameterOffset = -1;
 
       while (parameters < numberOfParameters) {
         // 8 bytes offset to skip frame pointer and link
-        if (getType(entry) == ARRAY_T) {
-          parameterOffset = parameterOffset + getArraySize(entry);
+//        if (getType(entry) == ARRAY_T) {
+//          parameterOffset = parameterOffset + getArraySize(entry);
 
-        } else
-          parameterOffset = parameterOffset + 1;
+//        } else
+//          parameterOffset = parameterOffset + 1;
  
-        setAddress(entry, parameterOffset * WORDSIZE + 2 * WORDSIZE);
+//        setAddress(entry, parameterOffset * WORDSIZE + 2 * WORDSIZE);
+        setAddress(entry, parameters * WORDSIZE + 2 * WORDSIZE);
 
         parameters = parameters + 1;
         entry    = getNextEntry(entry);
@@ -7086,8 +7121,7 @@ int selfie(int argc, int* argv) {
 
 int main(int argc, int* argv) {
   int array[10];
-  int x;
-  x = 7;
+
   initLibrary();
 
   initScanner();
@@ -7111,7 +7145,7 @@ int main(int argc, int* argv) {
 
     array[0] = 0;
     array[1 + 0]  = 1;
-    array[array[1] + 8] = array[array[5-4]] + 9 +x; 
+    array[array[1] + 8] = array[array[5-4]] + 9; 
 
     println();
     print((int*) "array[9] = ");
