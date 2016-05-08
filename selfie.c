@@ -3758,7 +3758,7 @@ void gr_initialization(int* name, int offset, int type) {
 void gr_procedure(int* procedure, int returnType, int* isValue) {
   int numberOfParameters;
   int parameters;
-//  int parameterOffset;
+  int parameterOffset;
   int localVariables;
   int functionStart;
   int arraySize;
@@ -3767,6 +3767,7 @@ void gr_procedure(int* procedure, int returnType, int* isValue) {
   currentProcedureName = procedure;
 
   numberOfParameters = 0;
+  parameterOffset = 0;
 
   // ( variable , variable ) ;
   if (symbol == SYM_LPARENTHESIS) {
@@ -3788,18 +3789,18 @@ void gr_procedure(int* procedure, int returnType, int* isValue) {
       entry = local_symbol_table;
 
       parameters = 0;
-//      parameterOffset = -1;
+
+      // 4 bytes offset to skip frame pointer
+      parameterOffset = WORDSIZE;
 
       while (parameters < numberOfParameters) {
-        // 8 bytes offset to skip frame pointer and link
-//        if (getType(entry) == ARRAY_T) {
-//          parameterOffset = parameterOffset + getArraySize(entry);
+        if (getType(entry) == ARRAY_T)
+          parameterOffset = parameterOffset + (getArraySize(entry) * WORDSIZE);
 
-//        } else
-//          parameterOffset = parameterOffset + 1;
+        else
+          parameterOffset = parameterOffset + WORDSIZE;
  
-//        setAddress(entry, parameterOffset * WORDSIZE + 2 * WORDSIZE);
-        setAddress(entry, parameters * WORDSIZE + 2 * WORDSIZE);
+        setAddress(entry, parameterOffset);
 
         parameters = parameters + 1;
         entry    = getNextEntry(entry);
@@ -7128,17 +7129,7 @@ int array[40];
 
     array[0] = 0;
     array[1 + 0]  = 1;
-    array[array[1] + 8] = array[array[5-4]] + 9; 
-//    array[19] = 19;
-//    array[31] = 31;
-//    array[5] = 5;
-//    array[6] = 6;
-//    array[20] = 20;
-//    array[30] = 30;
-//    array[29] = 29;
-//    array[15] = 15;
-//    array[22] = 22;
-//    array[7] = 7;
+    array[array[1] + 8] = array[array[5-4]] + 9;
 
     println();
     print((int*) "array[9] = ");
