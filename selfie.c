@@ -282,7 +282,7 @@ int SYM_LRS          = 29; // >>
 int SYM_LBRACKET     = 30; // [
 int SYM_RBRACKET     = 31; // ]
 
-int* SYMBOLS; // array of strings representing symbols
+int SYMBOLS[32]; // array of strings representing symbols
 
 int maxIdentifierLength = 64; // maximum number of characters in an identifier
 int maxIntegerLength    = 10; // maximum number of characters in an integer
@@ -313,73 +313,40 @@ int  sourceFD   = 0;        // file descriptor of open source file
 
 void initScanner () {
 
-    SYMBOLS = malloc(32 * SIZEOFINTSTAR);
+//    SYMBOLS = malloc(32 * SIZEOFINTSTAR);
 
-    *(SYMBOLS + SYM_IDENTIFIER)   = (int) "identifier";
-    *(SYMBOLS + SYM_INTEGER)      = (int) "integer";
-    *(SYMBOLS + SYM_VOID)         = (int) "void";
-    *(SYMBOLS + SYM_INT)          = (int) "int";
-    *(SYMBOLS + SYM_SEMICOLON)    = (int) ";";
-    *(SYMBOLS + SYM_IF)           = (int) "if";
-    *(SYMBOLS + SYM_ELSE)         = (int) "else";
-    *(SYMBOLS + SYM_PLUS)         = (int) "+";
-    *(SYMBOLS + SYM_MINUS)        = (int) "-";
-    *(SYMBOLS + SYM_ASTERISK)     = (int) "*";
-    *(SYMBOLS + SYM_DIV)          = (int) "/";
-    *(SYMBOLS + SYM_EQUALITY)     = (int) "==";
-    *(SYMBOLS + SYM_ASSIGN)       = (int) "=";
-    *(SYMBOLS + SYM_LPARENTHESIS) = (int) "(";
-    *(SYMBOLS + SYM_RPARENTHESIS) = (int) ")";
-    *(SYMBOLS + SYM_LBRACE)       = (int) "{";
-    *(SYMBOLS + SYM_RBRACE)       = (int) "}";
-    *(SYMBOLS + SYM_WHILE)        = (int) "while";
-    *(SYMBOLS + SYM_RETURN)       = (int) "return";
-    *(SYMBOLS + SYM_COMMA)        = (int) ",";
-    *(SYMBOLS + SYM_LT)           = (int) "<";
-    *(SYMBOLS + SYM_LEQ)          = (int) "<=";
-    *(SYMBOLS + SYM_GT)           = (int) ">";
-    *(SYMBOLS + SYM_GEQ)          = (int) ">=";
-    *(SYMBOLS + SYM_NOTEQ)        = (int) "!=";
-    *(SYMBOLS + SYM_MOD)          = (int) "%";
-    *(SYMBOLS + SYM_CHARACTER)    = (int) "character";
-    *(SYMBOLS + SYM_STRING)       = (int) "string";
-    *(SYMBOLS + SYM_LLS)          = (int) "<<";
-    *(SYMBOLS + SYM_LRS)          = (int) ">>";
-    *(SYMBOLS + SYM_LBRACKET)     = (int) "[";
-    *(SYMBOLS + SYM_RBRACKET)     = (int) "]";
-
-//    SYMBOLS[SYM_IDENTIFIER]   = (int) "identifier";
-//    SYMBOLS[SYM_INTEGER]      = (int) "integer";
-//    SYMBOLS[SYM_VOID]         = (int) "void";
-//    SYMBOLS[SYM_INT]          = (int) "int";
-//    SYMBOLS[SYM_SEMICOLON]    = (int) ";";
-//    SYMBOLS[SYM_IF]           = (int) "if";
-//    SYMBOLS[SYM_ELSE]         = (int) "else";
-//    SYMBOLS[SYM_PLUS]         = (int) "+";
-//    SYMBOLS[SYM_MINUS]        = (int) "-";
-//    SYMBOLS[SYM_ASTERISK]     = (int) "*";
-//    SYMBOLS[SYM_DIV]          = (int) "/";
-//    SYMBOLS[SYM_EQUALITY]     = (int) "==";
-//    SYMBOLS[SYM_ASSIGN]       = (int) "=";
-//    SYMBOLS[SYM_LPARENTHESIS] = (int) "(";
-//    SYMBOLS[SYM_RPARENTHESIS] = (int) ")";
-//    SYMBOLS[SYM_LBRACE]       = (int) "{";
-//    SYMBOLS[SYM_RBRACE]       = (int) "}";
-//    SYMBOLS[SYM_WHILE]        = (int) "while";
-//    SYMBOLS[SYM_RETURN]       = (int) "return";
-//    SYMBOLS[SYM_COMMA]        = (int) ",";
-//    SYMBOLS[SYM_LT]           = (int) "<";
-//    SYMBOLS[SYM_LEQ]          = (int) "<=";
-//    SYMBOLS[SYM_GT]           = (int) ">";
-//    SYMBOLS[SYM_GEQ]          = (int) ">=";
-//    SYMBOLS[SYM_NOTEQ]        = (int) "!=";
-//    SYMBOLS[SYM_MOD]          = (int) "%";
-//    SYMBOLS[SYM_CHARACTER]    = (int) "character";
-//    SYMBOLS[SYM_STRING]       = (int) "string";
-//    SYMBOLS[SYM_LLS]          = (int) "<<";
-//    SYMBOLS[SYM_LRS]          = (int) ">>";
-//    SYMBOLS[SYM_LBRACKET]     = (int) "[";
-//    SYMBOLS[SYM_RBRACKET]     = (int) "]";
+    SYMBOLS[SYM_IDENTIFIER]   = (int) "identifier";
+    SYMBOLS[SYM_INTEGER]      = (int) "integer";
+    SYMBOLS[SYM_VOID]         = (int) "void";
+    SYMBOLS[SYM_INT]          = (int) "int";
+    SYMBOLS[SYM_SEMICOLON]    = (int) ";";
+    SYMBOLS[SYM_IF]           = (int) "if";
+    SYMBOLS[SYM_ELSE]         = (int) "else";
+    SYMBOLS[SYM_PLUS]         = (int) "+";
+    SYMBOLS[SYM_MINUS]        = (int) "-";
+    SYMBOLS[SYM_ASTERISK]     = (int) "*";
+    SYMBOLS[SYM_DIV]          = (int) "/";
+    SYMBOLS[SYM_EQUALITY]     = (int) "==";
+    SYMBOLS[SYM_ASSIGN]       = (int) "=";
+    SYMBOLS[SYM_LPARENTHESIS] = (int) "(";
+    SYMBOLS[SYM_RPARENTHESIS] = (int) ")";
+    SYMBOLS[SYM_LBRACE]       = (int) "{";
+    SYMBOLS[SYM_RBRACE]       = (int) "}";
+    SYMBOLS[SYM_WHILE]        = (int) "while";
+    SYMBOLS[SYM_RETURN]       = (int) "return";
+    SYMBOLS[SYM_COMMA]        = (int) ",";
+    SYMBOLS[SYM_LT]           = (int) "<";
+    SYMBOLS[SYM_LEQ]          = (int) "<=";
+    SYMBOLS[SYM_GT]           = (int) ">";
+    SYMBOLS[SYM_GEQ]          = (int) ">=";
+    SYMBOLS[SYM_NOTEQ]        = (int) "!=";
+    SYMBOLS[SYM_MOD]          = (int) "%";
+    SYMBOLS[SYM_CHARACTER]    = (int) "character";
+    SYMBOLS[SYM_STRING]       = (int) "string";
+    SYMBOLS[SYM_LLS]          = (int) "<<";
+    SYMBOLS[SYM_LRS]          = (int) ">>";
+    SYMBOLS[SYM_LBRACKET]     = (int) "[";
+    SYMBOLS[SYM_RBRACKET]     = (int) "]";
 
     character = CHAR_EOF;
     symbol    = SYM_EOF;
@@ -774,7 +741,7 @@ int* touch(int* memory, int length);
 
 void selfie_load();
 
-// ------------------------ GLOBAL CONSTANTS -----------------------
+// ------------------------ GLOBAL CONSTANTS --------------s---------
 
 int maxBinaryLength = 262144;//131072; // 128KB
 
@@ -1576,7 +1543,7 @@ void printSymbol(int symbol) {
   if (symbol == SYM_EOF)
     print((int*) "end of file");
   else
-    print((int*) *(SYMBOLS + symbol));
+    print((int*) SYMBOLS[symbol]);
 
   putCharacter(CHAR_DOUBLEQUOTE);
 }
@@ -1736,7 +1703,7 @@ int isNotDoubleQuoteOrEOF() {
 }
 
 int identifierStringMatch(int keyword) {
-  return stringCompare(identifier, (int*) *(SYMBOLS + keyword));
+  return stringCompare(identifier, (int*) SYMBOLS[keyword]);
 }
 
 int identifierOrKeyword() {
@@ -2621,7 +2588,9 @@ int gr_array(int* variable, int* isValue) {
 
   talloc();
 
-  emitIFormat(OP_LW, getScope(entry), currentTemporary(), getAddress(entry));
+  emitIFormat(OP_ADDIU, getScope(entry), currentTemporary(), getAddress(entry));
+
+  //emitIFormat(OP_LW, getScope(entry), currentTemporary(), getAddress(entry));
 
   indexType = gr_expression(isValue);  
 
@@ -7119,8 +7088,9 @@ int selfie(int argc, int* argv) {
   return 0;
 }
 
+
 int main(int argc, int* argv) {
-  int array[10];
+int array[40];
 
   initLibrary();
 
@@ -7146,6 +7116,16 @@ int main(int argc, int* argv) {
     array[0] = 0;
     array[1 + 0]  = 1;
     array[array[1] + 8] = array[array[5-4]] + 9; 
+//    array[19] = 19;
+//    array[31] = 31;
+//    array[5] = 5;
+//    array[6] = 6;
+//    array[20] = 20;
+//    array[30] = 30;
+//    array[29] = 29;
+//    array[15] = 15;
+//    array[22] = 22;
+//    array[7] = 7;
 
     println();
     print((int*) "array[9] = ");
