@@ -2578,30 +2578,47 @@ int gr_call(int* procedure, int* isValue) {
 }
 
 int gr_array(int* variable, int* isValue) {
+  int offset;
   int indexType;
   int* entry;
 
   entry = getVariable(variable);
+  offset = getAddress(entry);
 
   if (getType(entry) != ARRAY_T)
     typeWarning(ARRAY_T, getType(entry));
 
-  talloc();
+  //talloc();
 
-  emitIFormat(OP_ADDIU, getScope(entry), currentTemporary(), getAddress(entry));
+  //emitIFormat(OP_ADDIU, getScope(entry), currentTemporary(), getAddress(entry));
 
-  //emitIFormat(OP_LW, getScope(entry), currentTemporary(), getAddress(entry));
+  indexType = gr_logicalShift(isValue); 
 
-  indexType = gr_expression(isValue);  
+  if (*isValue == 1) {
+    offset = offset + (*(isValue + 1) * WORDSIZE);
 
-  if (indexType == INT_T)
-    emitLeftShiftBy(2);
-  else
-    typeWarning(INT_T, indexType);
+    talloc();
 
-  emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
+    emitIFormat(OP_ADDIU, getScope(entry), currentTemporary(), offset);
 
-  tfree(1);
+    *isValue = 0;
+    *(isValue + 1) = 0;
+
+  } else { 
+
+    if (indexType == INT_T)
+      emitLeftShiftBy(2);
+    else
+      typeWarning(INT_T, indexType);
+
+    talloc();
+
+    emitIFormat(OP_ADDIU, getScope(entry), currentTemporary(), offset);
+
+    emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
+
+    tfree(1);
+  }
 
   if (symbol == SYM_RBRACKET) 
     getSymbol();

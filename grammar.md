@@ -57,7 +57,7 @@ if               = "if" "(" expression ")"
 
 return           = "return" [ expression ] .
 
-statement        = ( [ "*" ] identifier | identifier "[" logicalShift "]" | "*" "(" expression ")" ) "="
+statement        = ( [ "*" ] identifier | array | "*" "(" expression ")" ) "="
                       expression ";" |
                     call ";" | 
                     while | 
