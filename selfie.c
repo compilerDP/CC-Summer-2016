@@ -2588,10 +2588,6 @@ int gr_array(int* variable, int* isValue) {
   if (getType(entry) != ARRAY_T)
     typeWarning(ARRAY_T, getType(entry));
 
-  //talloc();
-
-  //emitIFormat(OP_ADDIU, getScope(entry), currentTemporary(), getAddress(entry));
-
   indexType = gr_logicalShift(isValue); 
 
   if (*isValue == 1) {
