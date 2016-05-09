@@ -3908,6 +3908,7 @@ void gr_procedure(int* procedure, int returnType, int* isValue) {
 void gr_cstar() {
   int type;
   int arraySize;
+  int dimension;
   int* variableOrProcedureName;
   int* isValue;
 
@@ -3956,22 +3957,39 @@ void gr_cstar() {
         if (symbol == SYM_LPARENTHESIS)
           gr_procedure(variableOrProcedureName, type, isValue);
 
-        // type identifier "[" integer "]" ";" 
+        // type identifier "[" integer "]" 
         else if (symbol == SYM_LBRACKET) {
           getSymbol();
 
           if (symbol == SYM_INTEGER) {
             arraySize = literal;
-
-            allocatedMemory = allocatedMemory + (WORDSIZE * arraySize);
+            dimension = 1;
 
             getSymbol();
 
             if (symbol == SYM_RBRACKET) {
               getSymbol();
 
+              if (symbol == SYM_LBRACKET) {
+                getSymbol();
+
+                if (symbol == SYM_INTEGER) {
+                  dimension = literal;
+                  getSymbol();
+
+                  if (symbol == SYM_RBRACKET)
+                    getSymbol();
+                  else
+                    syntaxErrorSymbol(SYM_RBRACKET);
+
+                } else
+                  syntaxErrorSymbol(SYM_INTEGER);
+              }
+
+              allocatedMemory = allocatedMemory + (WORDSIZE * arraySize * dimension);
+
               if (symbol == SYM_SEMICOLON) {
-                createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, ARRAY_T, 0, -allocatedMemory, arraySize, type, 1);
+                createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, ARRAY_T, 0, -allocatedMemory, arraySize, type, dimension);
 
                 getSymbol();
 
@@ -4459,7 +4477,7 @@ void emitGlobalsStrings() {
       storeBinary(binaryLength, getValue(entry));
 
       if (getType(entry) == ARRAY_T)
-        binaryLength = binaryLength + (WORDSIZE * getArraySize(entry));
+        binaryLength = binaryLength + (WORDSIZE * getArraySize(entry) * getDimension(entry));
       else
         binaryLength = binaryLength + WORDSIZE;
 
@@ -7106,9 +7124,9 @@ int selfie(int argc, int* argv) {
   return 0;
 }
 
+int array[10][2];
 
 int main(int argc, int* argv) {
-int array[40];
 
   initLibrary();
 
@@ -7131,14 +7149,14 @@ int array[40];
     println();                                  //A for Aziz
 						                        //T for Tarek
 
-    array[0] = 0;
-    array[1 + 0]  = 1;
-    array[array[1] + 8] = array[array[5-4]] + 9;
+//    array[0] = 0;
+//    array[1 + 0]  = 1;
+//    array[array[1] + 8] = array[array[5-4]] + 9;
 
-    println();
-    print((int*) "array[9] = ");
-    print(itoa(array[9],string_buffer,10,0,0));
-    println();
+//    println();
+//    print((int*) "array[9] = ");
+//    print(itoa(array[9],string_buffer,10,0,0));
+//    println();
 
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
