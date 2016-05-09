@@ -490,7 +490,7 @@ void gr_if(int* isValue);
 void gr_return(int returnType, int* isValue);
 void gr_statement(int* isValue);
 int  gr_type();
-int gr_variable(int offset);
+void gr_variable(int offset, int* additionalMemorySpace);
 void gr_initialization(int* name, int offset, int type);
 void gr_procedure(int* procedure, int returnType, int* isValue);
 void gr_cstar();
@@ -3639,12 +3639,14 @@ int gr_type() {
   return type;
 }
 
-int gr_variable(int offset) {
+void gr_variable(int offset, int* additionalMemorySpace) {
   int type;
   int arraySize;
+  int dimension;
   int* variable;
 
   arraySize = 0;
+  dimension = 0;
 
   type = gr_type();
 
@@ -3658,16 +3660,37 @@ int gr_variable(int offset) {
     
       if (symbol == SYM_INTEGER) {
         arraySize = literal;
-        offset = offset - ((arraySize - 1) * WORDSIZE);
-
-        createSymbolTableEntry(LOCAL_TABLE, variable, lineNumber, VARIABLE, ARRAY_T, 0, offset, arraySize, type, 1);
+        dimension = 1;
 
         getSymbol();
 
-        if (symbol == SYM_RBRACKET)
+        if (symbol == SYM_RBRACKET) {
           getSymbol();
-        else
+
+          if (symbol == SYM_LBRACKET) {
+            getSymbol();
+    
+            if (symbol == SYM_INTEGER) {
+              dimension = literal;
+              getSymbol();
+
+              if (symbol == SYM_RBRACKET)
+                getSymbol();
+              else
+                syntaxErrorSymbol(SYM_RBRACKET);
+
+            } else
+              syntaxErrorSymbol(SYM_INTEGER);
+          }
+        } else
           syntaxErrorSymbol(SYM_RBRACKET);
+
+        *additionalMemorySpace = (arraySize * dimension) - 1;
+
+        offset = offset - (*additionalMemorySpace * WORDSIZE);
+
+        createSymbolTableEntry(LOCAL_TABLE, variable, lineNumber, VARIABLE, ARRAY_T, 0, offset, arraySize, type, dimension);
+
       } else
         syntaxErrorSymbol(SYM_INTEGER); 
 
@@ -3679,8 +3702,6 @@ int gr_variable(int offset) {
 
     createSymbolTableEntry(LOCAL_TABLE, (int*) "missing variable name", lineNumber, VARIABLE, type, 0, offset, 0, 0, 0);
   }
-
-  return arraySize;
 }
 
 void gr_initialization(int* name, int offset, int type) {
@@ -3765,7 +3786,7 @@ void gr_procedure(int* procedure, int returnType, int* isValue) {
   int parameterOffset;
   int localVariables;
   int functionStart;
-  int arraySize;
+  int* additionalMemorySpace;
   int* entry;
 
   currentProcedureName = procedure;
@@ -3773,19 +3794,22 @@ void gr_procedure(int* procedure, int returnType, int* isValue) {
   numberOfParameters = 0;
   parameterOffset = 0;
 
+  additionalMemorySpace = malloc(SIZEOFINT);
+  *additionalMemorySpace = 0;
+
   // ( variable , variable ) ;
   if (symbol == SYM_LPARENTHESIS) {
     getSymbol();
 
     if (symbol != SYM_RPARENTHESIS) {
-      gr_variable(0);
+      gr_variable(0, additionalMemorySpace);
 
       numberOfParameters = 1;
 
       while (symbol == SYM_COMMA) {
         getSymbol();
 
-        gr_variable(0);
+        gr_variable(0, additionalMemorySpace);
 
         numberOfParameters = numberOfParameters + 1;
       }
@@ -3861,13 +3885,13 @@ void gr_procedure(int* procedure, int returnType, int* isValue) {
     localVariables = 0;
 
     while (symbol == SYM_INT) {
-      arraySize = 0;
+      *additionalMemorySpace = 0;
       localVariables = localVariables + 1;
 
-      arraySize = gr_variable(-localVariables * WORDSIZE);
+      gr_variable(-localVariables * WORDSIZE, additionalMemorySpace);
 
-      if (arraySize > 1)
-        localVariables = localVariables + arraySize - 1;
+      if (*additionalMemorySpace > 0)
+        localVariables = localVariables + *additionalMemorySpace;
 
       if (symbol == SYM_SEMICOLON)
         getSymbol();
@@ -7124,9 +7148,11 @@ int selfie(int argc, int* argv) {
   return 0;
 }
 
-int array[10][2];
+//int array[10][2];
 
 int main(int argc, int* argv) {
+
+  int array[10][2];
 
   initLibrary();
 

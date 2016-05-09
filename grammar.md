@@ -23,7 +23,7 @@ type             = "int" [ "*" ] .
 
 cast             = "(" type ")" .
 
-array            = identifier "[" logicalShift "]" .
+array            = identifier "[" logicalShift "]" [ "[" logicalShift "]" ] .
 
 call             = identifier "(" [ expression { "," expression } ] ")" .
 
@@ -64,12 +64,12 @@ statement        = ( [ "*" ] identifier | array | "*" "(" expression ")" ) "="
                     if | 
                     return ";" .
 
-variable         = type identifier [ "[" integer "]" ] .
+variable         = type identifier [ "[" integer "]"  [ "[" integer "]" ] ] .
 
 procedure        = "(" [ variable { "," variable } ] ")" 
                     ( ";" | "{" { variable ";" } { statement } "}" ) .
 
 cstar            = { type identifier [ "=" [ cast ] [ "-" ] literal ] ";" | 
-                   type identifier "[" integer "]" ";" |
+                   type identifier "[" integer "]" [ "[" integer "]" ] ";" |
                    ( "void" | type ) identifier procedure } .
 ```
