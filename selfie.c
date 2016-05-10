@@ -114,6 +114,8 @@ int roundUp(int n, int m);
 int* malloc(int size);
 void exit(int code);
 
+int getSizeOfType(int type);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 int CHAR_EOF          = -1; // end of file
@@ -312,8 +314,6 @@ int  sourceFD   = 0;        // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
-
-//    SYMBOLS = malloc(32 * SIZEOFINTSTAR);
 
     SYMBOLS[SYM_IDENTIFIER]   = (int) "identifier";
     SYMBOLS[SYM_INTEGER]      = (int) "integer";
@@ -1530,6 +1530,15 @@ int roundUp(int n, int m) {
     return n - n % m;
 }
 
+int getSizeOfType(int type) {
+  if (type == INT_T)
+    return SIZEOFINT;
+  else if (type == INTSTAR_T)
+    return SIZEOFINTSTAR;
+  else
+    return 0;
+}
+
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // ---------------------    C O M P I L E R    ---------------------
@@ -2584,10 +2593,12 @@ int gr_call(int* procedure, int* isValue) {
 int gr_array(int* variable, int* isValue) {
   int offset;
   int indexType;
+  int elemType;
   int* entry;
 
   entry = getVariable(variable);
   offset = getAddress(entry);
+  elemType = getElemType(entry);
 
   if (getType(entry) != ARRAY_T)
     typeWarning(ARRAY_T, getType(entry));
@@ -2595,7 +2606,7 @@ int gr_array(int* variable, int* isValue) {
   indexType = gr_logicalShift(isValue); 
 
   if (*isValue == 1) {
-    offset = offset + (*(isValue + 1) * WORDSIZE);
+    offset = offset + (*(isValue + 1) * getSizeOfType(elemType));
 
     talloc();
 
@@ -3687,7 +3698,7 @@ void gr_variable(int offset, int* additionalMemorySpace) {
 
         *additionalMemorySpace = (arraySize * dimension) - 1;
 
-        offset = offset - (*additionalMemorySpace * WORDSIZE);
+        offset = offset - (*additionalMemorySpace * getSizeOfType(type));
 
         createSymbolTableEntry(LOCAL_TABLE, variable, lineNumber, VARIABLE, ARRAY_T, 0, offset, arraySize, type, dimension);
 
@@ -3823,10 +3834,10 @@ void gr_procedure(int* procedure, int returnType, int* isValue) {
 
       while (parameters < numberOfParameters) {
         if (getType(entry) == ARRAY_T)
-          parameterOffset = parameterOffset + (getArraySize(entry) * WORDSIZE);
+          parameterOffset = parameterOffset + (getArraySize(entry) * getSizeOfType(getElemType(entry)));
 
         else
-          parameterOffset = parameterOffset + WORDSIZE;
+          parameterOffset = parameterOffset + getSizeOfType(getType(entry));
  
         setAddress(entry, parameterOffset);
 
@@ -4010,7 +4021,7 @@ void gr_cstar() {
                   syntaxErrorSymbol(SYM_INTEGER);
               }
 
-              allocatedMemory = allocatedMemory + (WORDSIZE * arraySize * dimension);
+              allocatedMemory = allocatedMemory + (getSizeOfType(type) * arraySize * dimension);
 
               if (symbol == SYM_SEMICOLON) {
                 createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, ARRAY_T, 0, -allocatedMemory, arraySize, type, dimension);
@@ -4501,7 +4512,7 @@ void emitGlobalsStrings() {
       storeBinary(binaryLength, getValue(entry));
 
       if (getType(entry) == ARRAY_T)
-        binaryLength = binaryLength + (WORDSIZE * getArraySize(entry) * getDimension(entry));
+        binaryLength = binaryLength + (getSizeOfType(getElemType(entry)) * getArraySize(entry) * getDimension(entry));
       else
         binaryLength = binaryLength + WORDSIZE;
 
