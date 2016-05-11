@@ -365,7 +365,7 @@ void resetScanner() {
 
 void resetSymbolTables();
 
-void createSymbolTableEntry(int which, int* string, int line, int class, int type, int value, int address, int arraySize, int elementType, int dimension);
+void createSymbolTableEntry(int which, int* string, int line, int class, int type, int value, int address, int arraySize, int elementType, int secDimSize);
 int* searchSymbolTable(int* entry, int* string, int class);
 int* getSymbolTableEntry(int* string, int class);
 
@@ -373,19 +373,19 @@ int isUndefinedProcedure(int* entry);
 int reportUndefinedProcedures();
 
 // symbol table entry:
-// +----+-----------+
-// |  0 | next      | pointer to next entry
-// |  1 | string    | identifier string, string literal
-// |  2 | line#     | source line number
-// |  3 | class     | VARIABLE, PROCEDURE, STRING
-// |  4 | type      | INT_T, INTSTAR_T, VOID_T
-// |  5 | value     | VARIABLE: initial value
-// |  6 | address   | VARIABLE: offset, PROCEDURE: address, STRING: offset
-// |  7 | scope     | REG_GP, REG_FP
-// |  8 | arraySize | number of elements
-// |  9 | elemType  | INT_T, INTSTAR_T
-// | 10 | dimension | array dimension
-// +----+-----------+
+// +----+------------+
+// |  0 | next       | pointer to next entry
+// |  1 | string     | identifier string, string literal
+// |  2 | line#      | source line number
+// |  3 | class      | VARIABLE, PROCEDURE, STRING
+// |  4 | type       | INT_T, INTSTAR_T, VOID_T
+// |  5 | value      | VARIABLE: initial value
+// |  6 | address    | VARIABLE: offset, PROCEDURE: address, STRING: offset
+// |  7 | scope      | REG_GP, REG_FP
+// |  8 | arraySize  | number of elements
+// |  9 | elemType   | INT_T, INTSTAR_T
+// | 10 | secDimSize | size of second array dimension
+// +----+------------+
 
 int* getNextEntry(int* entry)  { return (int*) *entry; }
 int* getString(int* entry)     { return (int*) *(entry +  1); }
@@ -397,19 +397,19 @@ int  getAddress(int* entry)    { return        *(entry +  6); }
 int  getScope(int* entry)      { return        *(entry +  7); }
 int  getArraySize(int* entry)  { return        *(entry +  8); }
 int  getElemType(int* entry)   { return        *(entry +  9); }
-int  getDimension(int* entry)  { return        *(entry + 10); }
+int  getSecDimSize(int* entry) { return        *(entry + 10); }
 
-void setNextEntry(int* entry, int* next)    { *entry        = (int) next; }
-void setString(int* entry, int* identifier) { *(entry +  1) = (int) identifier; }
-void setLineNumber(int* entry, int line)    { *(entry +  2) = line; }
-void setClass(int* entry, int class)        { *(entry +  3) = class; }
-void setType(int* entry, int type)          { *(entry +  4) = type; }
-void setValue(int* entry, int value)        { *(entry +  5) = value; }
-void setAddress(int* entry, int address)    { *(entry +  6) = address; }
-void setScope(int* entry, int scope)        { *(entry +  7) = scope; }
-void setArraySize(int* entry, int arraySize){ *(entry +  8) = arraySize; }
-void setElemType(int* entry, int elemType)  { *(entry +  9) = elemType; }
-void setDimension(int* entry, int dimension){ *(entry + 10) = dimension; }
+void setNextEntry(int* entry, int* next)      { *entry        = (int) next; }
+void setString(int* entry, int* identifier)   { *(entry +  1) = (int) identifier; }
+void setLineNumber(int* entry, int line)      { *(entry +  2) = line; }
+void setClass(int* entry, int class)          { *(entry +  3) = class; }
+void setType(int* entry, int type)            { *(entry +  4) = type; }
+void setValue(int* entry, int value)          { *(entry +  5) = value; }
+void setAddress(int* entry, int address)      { *(entry +  6) = address; }
+void setScope(int* entry, int scope)          { *(entry +  7) = scope; }
+void setArraySize(int* entry, int arraySize)  { *(entry +  8) = arraySize; }
+void setElemType(int* entry, int elemType)    { *(entry +  9) = elemType; }
+void setSecDimSize(int* entry, int secDimSize){ *(entry + 10) = secDimSize; }
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1996,7 +1996,7 @@ int getSymbol() {
 // ------------------------- SYMBOL TABLE --------------------------
 // -----------------------------------------------------------------
 
-void createSymbolTableEntry(int whichTable, int* string, int line, int class, int type, int value, int address, int arraySize, int elemType, int dimension) {
+void createSymbolTableEntry(int whichTable, int* string, int line, int class, int type, int value, int address, int arraySize, int elemType, int secDimSize) {
   int* newEntry;
 
   newEntry = malloc(2 * SIZEOFINTSTAR + 9 * SIZEOFINT);
@@ -2009,7 +2009,7 @@ void createSymbolTableEntry(int whichTable, int* string, int line, int class, in
   setAddress(newEntry, address);
   setArraySize(newEntry, arraySize);
   setElemType(newEntry, elemType);
-  setDimension(newEntry, dimension);
+  setSecDimSize(newEntry, secDimSize);
 
   // create entry at head of symbol table
   if (whichTable == GLOBAL_TABLE) {
@@ -2594,49 +2594,137 @@ int gr_array(int* variable, int* isValue) {
   int offset;
   int indexType;
   int elemType;
+  int sizeOfElemType;
+  int secDimSize;
+  int firstIndex;
+  int firstIndexIsValue;
+  int secondIndex;
+  int useRegister;
   int* entry;
 
   entry = getVariable(variable);
   offset = getAddress(entry);
   elemType = getElemType(entry);
+  sizeOfElemType = getSizeOfType(elemType);
+  secDimSize = getSecDimSize(entry);
+
+  useRegister = 1;
+  firstIndexIsValue = 0;
 
   if (getType(entry) != ARRAY_T)
     typeWarning(ARRAY_T, getType(entry));
 
   indexType = gr_logicalShift(isValue); 
 
+  if (indexType != INT_T)
+    typeWarning(INT_T, indexType);
+
+  // first dimension index is a constant
   if (*isValue == 1) {
-    offset = offset + (*(isValue + 1) * getSizeOfType(elemType));
-
-    talloc();
-
-    emitIFormat(OP_ADDIU, getScope(entry), currentTemporary(), offset);
+    firstIndexIsValue = 1;
+    firstIndex = *(isValue + 1);
 
     *isValue = 0;
     *(isValue + 1) = 0;
 
-  } else { 
+    if (symbol == SYM_RBRACKET) 
+      getSymbol();
+    else    
+      syntaxErrorSymbol(SYM_RBRACKET);
 
-    if (indexType == INT_T)
-      emitLeftShiftBy(2);
-    else
-      typeWarning(INT_T, indexType);
+    // two dimensional array
+    if (secDimSize > 1) {
 
-    talloc();
+      if (symbol == SYM_LBRACKET) {
+        getSymbol();
 
-    emitIFormat(OP_ADDIU, getScope(entry), currentTemporary(), offset);
+        indexType = gr_logicalShift(isValue);
 
-    emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
+        // second dimension index is also a constant
+        if (*isValue == 1) {
+          secondIndex = *(isValue + 1);
 
-    tfree(1);
+          *isValue = 0;
+          *(isValue + 1) = 0;
+
+          useRegister = 0;
+
+          offset = getAddress(entry) + (firstIndex * sizeOfElemType * secDimSize) + (secondIndex * sizeOfElemType);
+
+          talloc();
+
+          emitIFormat(OP_ADDIU, getScope(entry), currentTemporary(), offset);
+        }
+
+      } else
+        syntaxErrorSymbol(SYM_LBRACKET);
+
+    // one dimensional array with index constant folding
+    } else {
+      useRegister = 0;
+
+      offset = getAddress(entry) + (firstIndex * sizeOfElemType);
+
+      talloc();
+
+      emitIFormat(OP_ADDIU, getScope(entry), currentTemporary(), offset);
+    }
   }
+
+  // at least one index is not a constant
+  if (useRegister == 1) {
+
+    // two dimensional array
+    if (secDimSize > 1) {
+
+      // first index is a constant
+      // second index is not a constant and is already loaded into register
+      if (firstIndexIsValue == 1) {
+        
+        if (indexType == INT_T) {
+          emitLeftShiftBy(2);
+
+          offset = getAddress(entry) + (firstIndex * sizeOfElemType * secDimSize);
+          emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), offset);
+
+        } else 
+          typeWarning(INT_T, indexType);
+
+      // both indices are already loaded into registers
+      } else {
+
+        if (indexType != INT_T)
+          typeWarning(INT_T, indexType);
+
+        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
+
+        tfree(1);
+
+        emitLeftShiftBy(2);
+
+        emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), getAddress(entry));
+      }
+
+    // one dimensional array
+    } else { 
+
+      if (indexType == INT_T)
+        emitLeftShiftBy(2);
+      else
+        typeWarning(INT_T, indexType);
+
+      emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), getAddress(entry));
+    }
+
+    emitRFormat(OP_SPECIAL, getScope(entry), currentTemporary(), currentTemporary(), 0, FCT_ADDU);
+  } // end useRegister == 1
 
   if (symbol == SYM_RBRACKET) 
     getSymbol();
-  else
+  else    
     syntaxErrorSymbol(SYM_RBRACKET);
 
-  return getElemType(entry);
+  return elemType;
 }
 
 int gr_factor(int* isValue) {
@@ -3653,11 +3741,11 @@ int gr_type() {
 void gr_variable(int offset, int* additionalMemorySpace) {
   int type;
   int arraySize;
-  int dimension;
+  int secDimSize;
   int* variable;
 
   arraySize = 0;
-  dimension = 0;
+  secDimSize = 0;
 
   type = gr_type();
 
@@ -3671,7 +3759,7 @@ void gr_variable(int offset, int* additionalMemorySpace) {
     
       if (symbol == SYM_INTEGER) {
         arraySize = literal;
-        dimension = 1;
+        secDimSize = 1;
 
         getSymbol();
 
@@ -3682,7 +3770,7 @@ void gr_variable(int offset, int* additionalMemorySpace) {
             getSymbol();
     
             if (symbol == SYM_INTEGER) {
-              dimension = literal;
+              secDimSize = literal;
               getSymbol();
 
               if (symbol == SYM_RBRACKET)
@@ -3696,11 +3784,11 @@ void gr_variable(int offset, int* additionalMemorySpace) {
         } else
           syntaxErrorSymbol(SYM_RBRACKET);
 
-        *additionalMemorySpace = (arraySize * dimension) - 1;
+        *additionalMemorySpace = (arraySize * secDimSize) - 1;
 
         offset = offset - (*additionalMemorySpace * getSizeOfType(type));
 
-        createSymbolTableEntry(LOCAL_TABLE, variable, lineNumber, VARIABLE, ARRAY_T, 0, offset, arraySize, type, dimension);
+        createSymbolTableEntry(LOCAL_TABLE, variable, lineNumber, VARIABLE, ARRAY_T, 0, offset, arraySize, type, secDimSize);
 
       } else
         syntaxErrorSymbol(SYM_INTEGER); 
@@ -3830,11 +3918,11 @@ void gr_procedure(int* procedure, int returnType, int* isValue) {
       parameters = 0;
 
       // 4 bytes offset to skip frame pointer
-      parameterOffset = WORDSIZE;
+      parameterOffset = SIZEOFINTSTAR;
 
       while (parameters < numberOfParameters) {
         if (getType(entry) == ARRAY_T)
-          parameterOffset = parameterOffset + (getArraySize(entry) * getSizeOfType(getElemType(entry)));
+          parameterOffset = parameterOffset + (getArraySize(entry) * getSizeOfType(getElemType(entry)) * getSecDimSize(entry));
 
         else
           parameterOffset = parameterOffset + getSizeOfType(getType(entry));
@@ -3943,7 +4031,7 @@ void gr_procedure(int* procedure, int returnType, int* isValue) {
 void gr_cstar() {
   int type;
   int arraySize;
-  int dimension;
+  int secDimSize;
   int* variableOrProcedureName;
   int* isValue;
 
@@ -3998,18 +4086,19 @@ void gr_cstar() {
 
           if (symbol == SYM_INTEGER) {
             arraySize = literal;
-            dimension = 1;
+            secDimSize = 1;
 
             getSymbol();
 
             if (symbol == SYM_RBRACKET) {
               getSymbol();
 
+              // two dimensional array
               if (symbol == SYM_LBRACKET) {
                 getSymbol();
 
                 if (symbol == SYM_INTEGER) {
-                  dimension = literal;
+                  secDimSize = literal;
                   getSymbol();
 
                   if (symbol == SYM_RBRACKET)
@@ -4021,10 +4110,10 @@ void gr_cstar() {
                   syntaxErrorSymbol(SYM_INTEGER);
               }
 
-              allocatedMemory = allocatedMemory + (getSizeOfType(type) * arraySize * dimension);
+              allocatedMemory = allocatedMemory + (getSizeOfType(type) * arraySize * secDimSize);
 
               if (symbol == SYM_SEMICOLON) {
-                createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, ARRAY_T, 0, -allocatedMemory, arraySize, type, dimension);
+                createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, ARRAY_T, 0, -allocatedMemory, arraySize, type, secDimSize);
 
                 getSymbol();
 
@@ -4512,7 +4601,7 @@ void emitGlobalsStrings() {
       storeBinary(binaryLength, getValue(entry));
 
       if (getType(entry) == ARRAY_T)
-        binaryLength = binaryLength + (getSizeOfType(getElemType(entry)) * getArraySize(entry) * getDimension(entry));
+        binaryLength = binaryLength + (getSizeOfType(getElemType(entry)) * getArraySize(entry) * getSecDimSize(entry));
       else
         binaryLength = binaryLength + WORDSIZE;
 
@@ -7159,11 +7248,11 @@ int selfie(int argc, int* argv) {
   return 0;
 }
 
-//int array[10][2];
+int array[10][2];
 
 int main(int argc, int* argv) {
 
-  int array[10][2];
+//  int array[10][2];
 
   initLibrary();
 
@@ -7186,14 +7275,20 @@ int main(int argc, int* argv) {
     println();                                  //A for Aziz
 						                        //T for Tarek
 
-//    array[0] = 0;
-//    array[1 + 0]  = 1;
+    array[0][1] = 1;
+    array[0][2] = 2;
+    array[0][3] = 3;
+    array[0][4] = 4;
+    array[1][1] = 11;
+    array[1][2] = 12;
+    array[1][3] = 13;
+    array[9][4] = 100;
 //    array[array[1] + 8] = array[array[5-4]] + 9;
 
-//    println();
-//    print((int*) "array[9] = ");
-//    print(itoa(array[9],string_buffer,10,0,0));
-//    println();
+    println();
+    print((int*) "array[1][1] = ");
+    print(itoa(array[1][1],string_buffer,10,0,0));
+    println();
 
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
