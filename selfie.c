@@ -246,6 +246,8 @@ int isNotDoubleQuoteOrEOF();
 int identifierStringMatch(int stringIndex);
 int identifierOrKeyword();
 
+void countSymbol(int symbol);
+void printNumberOfSymbols();
 int getSymbol();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -284,6 +286,7 @@ int SYM_LRS          = 29; // >>
 int SYM_LBRACKET     = 30; // [
 int SYM_RBRACKET     = 31; // ]
 
+int numberOfSymbols = 32;
 int SYMBOLS[32][2]; // array of strings representing symbols
 
 int maxIdentifierLength = 64; // maximum number of characters in an identifier
@@ -314,6 +317,8 @@ int  sourceFD   = 0;        // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
+    int i;
+    i = 0;
 
     SYMBOLS[SYM_IDENTIFIER][0]   = (int) "identifier";
     SYMBOLS[SYM_INTEGER][0]      = (int) "integer";
@@ -347,6 +352,12 @@ void initScanner () {
     SYMBOLS[SYM_LRS][0]          = (int) ">>";
     SYMBOLS[SYM_LBRACKET][0]     = (int) "[";
     SYMBOLS[SYM_RBRACKET][0]     = (int) "]";
+
+    // reset count symbols
+    while (i < numberOfSymbols) {
+        SYMBOLS[i][1] = 0;
+        i = i + 1;
+    }
 
     character = CHAR_EOF;
     symbol    = SYM_EOF;
@@ -1735,6 +1746,32 @@ int identifierOrKeyword() {
     return SYM_IDENTIFIER;
 }
 
+void countSymbol(int symbol) {
+  SYMBOLS[symbol][1] = SYMBOLS[symbol][1] + 1;
+}
+
+void printNumberOfSymbols() {
+  int i;
+  i = 0;
+
+  println();
+  print((int*) "Number of each SYMBOL");
+  println();
+  print((int*) "-----------------------------------");
+  println();
+
+  while (i < numberOfSymbols) {
+    print((int*) SYMBOLS[i][0]);
+    print((int*) "     ");
+    print(itoa(SYMBOLS[i][1], string_buffer, 10, 0, 0));
+    println();
+
+    i = i + 1;
+  }
+
+  println();
+}
+
 int getSymbol() {
   int i;
 
@@ -1742,9 +1779,11 @@ int getSymbol() {
 
   if (findNextCharacter() == CHAR_EOF)
     return SYM_EOF;
-  else if (symbol == SYM_DIV)
+  else if (symbol == SYM_DIV) {
     // check here because / was recognized instead of //
+    countSymbol(SYM_DIV);
     return SYM_DIV;
+  }
 
   if (isCharacterLetter()) {
     identifier = malloc(maxIdentifierLength + 1);
@@ -1989,6 +2028,7 @@ int getSymbol() {
     exit(-1);
   }
 
+  countSymbol(symbol);
   return symbol;
 }
 
@@ -7299,6 +7339,8 @@ int main(int argc, int* argv) {
         print((int*) ": usage: selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
         println();
     }
+
+    printNumberOfSymbols();
 
     return 0;
 }
