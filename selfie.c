@@ -284,7 +284,7 @@ int SYM_LRS          = 29; // >>
 int SYM_LBRACKET     = 30; // [
 int SYM_RBRACKET     = 31; // ]
 
-int SYMBOLS[32]; // array of strings representing symbols
+int SYMBOLS[32][2]; // array of strings representing symbols
 
 int maxIdentifierLength = 64; // maximum number of characters in an identifier
 int maxIntegerLength    = 10; // maximum number of characters in an integer
@@ -315,38 +315,38 @@ int  sourceFD   = 0;        // file descriptor of open source file
 
 void initScanner () {
 
-    SYMBOLS[SYM_IDENTIFIER]   = (int) "identifier";
-    SYMBOLS[SYM_INTEGER]      = (int) "integer";
-    SYMBOLS[SYM_VOID]         = (int) "void";
-    SYMBOLS[SYM_INT]          = (int) "int";
-    SYMBOLS[SYM_SEMICOLON]    = (int) ";";
-    SYMBOLS[SYM_IF]           = (int) "if";
-    SYMBOLS[SYM_ELSE]         = (int) "else";
-    SYMBOLS[SYM_PLUS]         = (int) "+";
-    SYMBOLS[SYM_MINUS]        = (int) "-";
-    SYMBOLS[SYM_ASTERISK]     = (int) "*";
-    SYMBOLS[SYM_DIV]          = (int) "/";
-    SYMBOLS[SYM_EQUALITY]     = (int) "==";
-    SYMBOLS[SYM_ASSIGN]       = (int) "=";
-    SYMBOLS[SYM_LPARENTHESIS] = (int) "(";
-    SYMBOLS[SYM_RPARENTHESIS] = (int) ")";
-    SYMBOLS[SYM_LBRACE]       = (int) "{";
-    SYMBOLS[SYM_RBRACE]       = (int) "}";
-    SYMBOLS[SYM_WHILE]        = (int) "while";
-    SYMBOLS[SYM_RETURN]       = (int) "return";
-    SYMBOLS[SYM_COMMA]        = (int) ",";
-    SYMBOLS[SYM_LT]           = (int) "<";
-    SYMBOLS[SYM_LEQ]          = (int) "<=";
-    SYMBOLS[SYM_GT]           = (int) ">";
-    SYMBOLS[SYM_GEQ]          = (int) ">=";
-    SYMBOLS[SYM_NOTEQ]        = (int) "!=";
-    SYMBOLS[SYM_MOD]          = (int) "%";
-    SYMBOLS[SYM_CHARACTER]    = (int) "character";
-    SYMBOLS[SYM_STRING]       = (int) "string";
-    SYMBOLS[SYM_LLS]          = (int) "<<";
-    SYMBOLS[SYM_LRS]          = (int) ">>";
-    SYMBOLS[SYM_LBRACKET]     = (int) "[";
-    SYMBOLS[SYM_RBRACKET]     = (int) "]";
+    SYMBOLS[SYM_IDENTIFIER][0]   = (int) "identifier";
+    SYMBOLS[SYM_INTEGER][0]      = (int) "integer";
+    SYMBOLS[SYM_VOID][0]         = (int) "void";
+    SYMBOLS[SYM_INT][0]          = (int) "int";
+    SYMBOLS[SYM_SEMICOLON][0]    = (int) ";";
+    SYMBOLS[SYM_IF][0]           = (int) "if";
+    SYMBOLS[SYM_ELSE][0]         = (int) "else";
+    SYMBOLS[SYM_PLUS][0]         = (int) "+";
+    SYMBOLS[SYM_MINUS][0]        = (int) "-";
+    SYMBOLS[SYM_ASTERISK][0]     = (int) "*";
+    SYMBOLS[SYM_DIV][0]          = (int) "/";
+    SYMBOLS[SYM_EQUALITY][0]     = (int) "==";
+    SYMBOLS[SYM_ASSIGN][0]       = (int) "=";
+    SYMBOLS[SYM_LPARENTHESIS][0] = (int) "(";
+    SYMBOLS[SYM_RPARENTHESIS][0] = (int) ")";
+    SYMBOLS[SYM_LBRACE][0]       = (int) "{";
+    SYMBOLS[SYM_RBRACE][0]       = (int) "}";
+    SYMBOLS[SYM_WHILE][0]        = (int) "while";
+    SYMBOLS[SYM_RETURN][0]       = (int) "return";
+    SYMBOLS[SYM_COMMA][0]        = (int) ",";
+    SYMBOLS[SYM_LT][0]           = (int) "<";
+    SYMBOLS[SYM_LEQ][0]          = (int) "<=";
+    SYMBOLS[SYM_GT][0]           = (int) ">";
+    SYMBOLS[SYM_GEQ][0]          = (int) ">=";
+    SYMBOLS[SYM_NOTEQ][0]        = (int) "!=";
+    SYMBOLS[SYM_MOD][0]          = (int) "%";
+    SYMBOLS[SYM_CHARACTER][0]    = (int) "character";
+    SYMBOLS[SYM_STRING][0]       = (int) "string";
+    SYMBOLS[SYM_LLS][0]          = (int) "<<";
+    SYMBOLS[SYM_LRS][0]          = (int) ">>";
+    SYMBOLS[SYM_LBRACKET][0]     = (int) "[";
+    SYMBOLS[SYM_RBRACKET][0]     = (int) "]";
 
     character = CHAR_EOF;
     symbol    = SYM_EOF;
@@ -1555,7 +1555,7 @@ void printSymbol(int symbol) {
   if (symbol == SYM_EOF)
     print((int*) "end of file");
   else
-    print((int*) SYMBOLS[symbol]);
+    print((int*) SYMBOLS[symbol][0]);
 
   putCharacter(CHAR_DOUBLEQUOTE);
 }
@@ -1715,7 +1715,7 @@ int isNotDoubleQuoteOrEOF() {
 }
 
 int identifierStringMatch(int keyword) {
-  return stringCompare(identifier, (int*) SYMBOLS[keyword]);
+  return stringCompare(identifier, (int*) SYMBOLS[keyword][0]);
 }
 
 int identifierOrKeyword() {
@@ -2247,7 +2247,7 @@ void talloc() {
 int currentTemporary() {
   if (allocatedTemporaries > 0)
     return allocatedTemporaries + REG_A3;
-  else {
+  else {println();print((int*) "curr reg < 0");println();
     syntaxErrorMessage((int*) "illegal register access");
 
     exit(-1);
@@ -2257,7 +2257,7 @@ int currentTemporary() {
 int previousTemporary() {
   if (allocatedTemporaries > 1)
     return currentTemporary() - 1;
-  else {
+  else {println();print((int*) "prev reg < 0");println();
     syntaxErrorMessage((int*) "illegal register access");
 
     exit(-1);
@@ -2627,13 +2627,13 @@ int gr_array(int* variable, int* isValue) {
     *isValue = 0;
     *(isValue + 1) = 0;
 
-    if (symbol == SYM_RBRACKET) 
-      getSymbol();
-    else    
-      syntaxErrorSymbol(SYM_RBRACKET);
-
     // two dimensional array
     if (secDimSize > 1) {
+
+      if (symbol == SYM_RBRACKET) 
+        getSymbol();
+      else    
+        syntaxErrorSymbol(SYM_RBRACKET);
 
       if (symbol == SYM_LBRACKET) {
         getSymbol();
@@ -2669,8 +2669,32 @@ int gr_array(int* variable, int* isValue) {
 
       emitIFormat(OP_ADDIU, getScope(entry), currentTemporary(), offset);
     }
-  }
 
+  // first index of two dimensional array is not a constant
+  } else if (secDimSize > 1) {
+
+    if (symbol == SYM_RBRACKET) 
+      getSymbol();
+    else    
+      syntaxErrorSymbol(SYM_RBRACKET);
+
+    if (symbol == SYM_LBRACKET) {
+
+      getSymbol();
+
+      indexType = gr_logicalShift(isValue);
+
+      if (*isValue == 1) {
+        load_integer(*(isValue + 1));
+
+        *isValue = 0;
+        *(isValue + 1) = 0;
+      }
+
+    } else
+      syntaxErrorSymbol(SYM_LBRACKET);
+  }
+  
   // at least one index is not a constant
   if (useRegister == 1) {
 
@@ -2717,7 +2741,7 @@ int gr_array(int* variable, int* isValue) {
     }
 
     emitRFormat(OP_SPECIAL, getScope(entry), currentTemporary(), currentTemporary(), 0, FCT_ADDU);
-  } // end useRegister == 1
+  }
 
   if (symbol == SYM_RBRACKET) 
     getSymbol();
@@ -7248,11 +7272,7 @@ int selfie(int argc, int* argv) {
   return 0;
 }
 
-int array[10][2];
-
 int main(int argc, int* argv) {
-
-//  int array[10][2];
 
   initLibrary();
 
@@ -7268,27 +7288,11 @@ int main(int argc, int* argv) {
   argc = argc - 1;
   argv = argv + 1;
 
-
     println();
     print((int*)"   This is datTeam Selfie");	// output the name of our team
     println();                                  //D stands for Daniela
     println();                                  //A for Aziz
 						                        //T for Tarek
-
-    array[0][1] = 1;
-    array[0][2] = 2;
-    array[0][3] = 3;
-    array[0][4] = 4;
-    array[1][1] = 11;
-    array[1][2] = 12;
-    array[1][3] = 13;
-    array[9][4] = 100;
-//    array[array[1] + 8] = array[array[5-4]] + 9;
-
-    println();
-    print((int*) "array[1][1] = ");
-    print(itoa(array[1][1],string_buffer,10,0,0));
-    println();
 
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
