@@ -246,6 +246,8 @@ int isNotDoubleQuoteOrEOF();
 int identifierStringMatch(int stringIndex);
 int identifierOrKeyword();
 
+void countSymbol(int symbol);
+void printNumberOfSymbols();
 int getSymbol();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -315,6 +317,7 @@ int  sourceFD   = 0;        // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
+    int i;
 
     SYMBOLS[SYM_IDENTIFIER][0]   = (int) "identifier";
     SYMBOLS[SYM_INTEGER][0]      = (int) "integer";
@@ -348,6 +351,13 @@ void initScanner () {
     SYMBOLS[SYM_LRS][0]          = (int) ">>";
     SYMBOLS[SYM_LBRACKET][0]     = (int) "[";
     SYMBOLS[SYM_RBRACKET][0]     = (int) "]";
+
+    i = 0;
+
+    while (i < numberOfSymbols) {
+      SYMBOLS[i][1] = 0;
+      i = i + 1;
+    }
 
     character = CHAR_EOF;
     symbol    = SYM_EOF;
@@ -479,6 +489,9 @@ int  help_call_codegen(int* entry, int* procedure);
 void help_procedure_prologue(int localVariables);
 void help_procedure_epilogue(int parameters);
 
+void resetIsValue(int* isValue);
+
+void gr_selector(int* isValue, int arraySize);
 int  gr_call(int* procedure, int* isValue);
 int  gr_array(int* variable, int* isValue);
 int  gr_factor(int* isValue);
@@ -513,6 +526,8 @@ int* currentProcedureName = (int*) 0; // name of currently parsed procedure
 void emitLeftShiftBy(int b);
 void emitMainEntry();
 void fixRegisterInitialization();
+void multiplyRegisterWith(int m);
+void multiplyWithTypeSize(int type);
 
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
@@ -1736,6 +1751,32 @@ int identifierOrKeyword() {
     return SYM_IDENTIFIER;
 }
 
+void countSymbol(int symbol) {
+  SYMBOLS[symbol][1] = SYMBOLS[symbol][1] + 1;
+}
+
+void printNumberOfSymbols() {
+  int i;
+  i = 0;
+
+  println();
+  print((int*) "Number of each SYMBOL");
+  println();
+  print((int*) "-----------------------------------");
+  println();
+
+  while (i < numberOfSymbols) {
+    print((int*) SYMBOLS[i][0]);
+    print((int*) "     ");
+    print(itoa(SYMBOLS[i][1], string_buffer, 10, 0, 0));
+    println();
+
+    i = i + 1;
+  }
+
+  println();
+}
+
 int getSymbol() {
   int i;
 
@@ -1744,6 +1785,7 @@ int getSymbol() {
   if (findNextCharacter() == CHAR_EOF)
     return SYM_EOF;
   else if (symbol == SYM_DIV) {
+    countSymbol(SYM_DIV);
     // check here because / was recognized instead of //
     return SYM_DIV;
   }
@@ -1991,6 +2033,7 @@ int getSymbol() {
     exit(-1);
   }
 
+  countSymbol(symbol);
   return symbol;
 }
 
@@ -2523,6 +2566,11 @@ void help_procedure_epilogue(int parameters) {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
 }
 
+void resetIsValue(int* isValue) {
+  *isValue = 0;
+  *(isValue + 1) = 0;
+}
+
 int gr_call(int* procedure, int* isValue) {
   int* entry;
   int numberOfTemporaries;
@@ -2592,163 +2640,140 @@ int gr_call(int* procedure, int* isValue) {
   return type;
 }
 
-int gr_array(int* variable, int* isValue) {
-  int offset;
+void gr_selector(int* isValue, int arraySize) {
   int indexType;
-  int elemType;
-  int sizeOfElemType;
-  int secDimSize;
-  int firstIndex;
-  int firstIndexIsValue;
-  int secondIndex;
-  int useRegister;
-  int* entry;
+  int arrayIndex;
 
-  entry = getVariable(variable);
-  offset = getAddress(entry);
-  elemType = getElemType(entry);
-  sizeOfElemType = getSizeOfType(elemType);
-  secDimSize = getSecDimSize(entry);
-
-  useRegister = 1;
-  firstIndexIsValue = 0;
-
-  if (getType(entry) != ARRAY_T)
-    typeWarning(ARRAY_T, getType(entry));
+  arrayIndex = 0;
 
   indexType = gr_logicalShift(isValue); 
 
   if (indexType != INT_T)
     typeWarning(INT_T, indexType);
 
-  // first dimension index is a constant
+  // index is a constant
   if (*isValue == 1) {
-    firstIndexIsValue = 1;
-    firstIndex = *(isValue + 1);
 
-    *isValue = 0;
-    *(isValue + 1) = 0;
+    arrayIndex = *(isValue + 1);
 
-    // two dimensional array
-    if (secDimSize > 1) {
+    if (arrayIndex < 0)
+      syntaxErrorMessage((int*) "array index out of bound");
 
-      if (symbol == SYM_RBRACKET) 
-        getSymbol();
-      else    
-        syntaxErrorSymbol(SYM_RBRACKET);
+    else if (arrayIndex >= arraySize)
+      syntaxErrorMessage((int*) "array index out of bound");
+  }
 
-      if (symbol == SYM_LBRACKET) {
-        getSymbol();
+  if (symbol == SYM_RBRACKET)
+    getSymbol();
+  else
+    syntaxErrorSymbol(SYM_RBRACKET);
+}
 
-        indexType = gr_logicalShift(isValue);
+int gr_array(int* variable, int* isValue) {
+  int* entry;
+  int offset;
+  int elemType;
+  int secDimSize;
+  int firstIndexIsValue;
+  int firstIndex;
 
-        // second dimension index is also a constant
-        if (*isValue == 1) {
-          secondIndex = *(isValue + 1);
+  entry = getVariable(variable);
+  offset = getAddress(entry);
+  elemType = getElemType(entry);
+  secDimSize = getSecDimSize(entry);
 
-          *isValue = 0;
-          *(isValue + 1) = 0;
+  firstIndexIsValue = 0;
+  firstIndex = 0;
 
-          useRegister = 0;
+  if (getType(entry) != ARRAY_T)
+    typeWarning(ARRAY_T, getType(entry));
 
-          offset = getAddress(entry) + (firstIndex * sizeOfElemType * secDimSize) + (secondIndex * sizeOfElemType);
+  gr_selector(isValue, getArraySize(entry));
 
-          talloc();
+  // one dimensional array
+  if (secDimSize == 1) {
 
-          emitIFormat(OP_ADDIU, getScope(entry), currentTemporary(), offset);
-        }
+    // constant folding
+    if (*isValue == 1) {
+      offset = offset + (*(isValue + 1) * getSizeOfType(elemType));
 
-      } else
-        syntaxErrorSymbol(SYM_LBRACKET);
-
-    // one dimensional array with index constant folding
-    } else {
-      useRegister = 0;
-
-      offset = getAddress(entry) + (firstIndex * sizeOfElemType);
+      resetIsValue(isValue);
 
       talloc();
 
-      emitIFormat(OP_ADDIU, getScope(entry), currentTemporary(), offset);
+      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), offset);
+
+    // index is loaded into register
+    } else {
+      multiplyWithTypeSize(elemType);
+
+      emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), offset);
     }
 
-  // first index of two dimensional array is not a constant
+  // two dimensional array
   } else if (secDimSize > 1) {
 
-    if (symbol == SYM_RBRACKET) 
-      getSymbol();
-    else    
-      syntaxErrorSymbol(SYM_RBRACKET);
+  // first selector
+    // first index is constant
+    if (*isValue == 1) {
+      firstIndexIsValue = 1;
+      firstIndex = *(isValue + 1);
 
-    if (symbol == SYM_LBRACKET) {
+      resetIsValue(isValue);
+      
+      offset = offset + (firstIndex * getSizeOfType(elemType) * secDimSize);
 
-      getSymbol();
+    // first index incl. offset is loaded into register
+    } else {
+      multiplyRegisterWith(getSizeOfType(elemType) * secDimSize);
 
-      indexType = gr_logicalShift(isValue);
-
-      if (*isValue == 1) {
-        load_integer(*(isValue + 1));
-
-        *isValue = 0;
-        *(isValue + 1) = 0;
-      }
-
-    } else
-      syntaxErrorSymbol(SYM_LBRACKET);
-  }
-  
-  // at least one index is not a constant
-  if (useRegister == 1) {
-
-    // two dimensional array
-    if (secDimSize > 1) {
-
-      // first index is a constant
-      // second index is not a constant and is already loaded into register
-      if (firstIndexIsValue == 1) {
-        
-        if (indexType == INT_T) {
-          emitLeftShiftBy(2);
-
-          offset = getAddress(entry) + (firstIndex * sizeOfElemType * secDimSize);
-          emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), offset);
-
-        } else 
-          typeWarning(INT_T, indexType);
-
-      // both indices are already loaded into registers
-      } else {
-
-        if (indexType != INT_T)
-          typeWarning(INT_T, indexType);
-
-        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
-
-        tfree(1);
-
-        emitLeftShiftBy(2);
-
-        emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), getAddress(entry));
-      }
-
-    // one dimensional array
-    } else { 
-
-      if (indexType == INT_T)
-        emitLeftShiftBy(2);
-      else
-        typeWarning(INT_T, indexType);
-
-      emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), getAddress(entry));
+      emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), offset);
     }
 
-    emitRFormat(OP_SPECIAL, getScope(entry), currentTemporary(), currentTemporary(), 0, FCT_ADDU);
+    if (symbol == SYM_LBRACKET)
+      getSymbol();
+    else
+      syntaxErrorSymbol(SYM_LBRACKET);
+
+  // second selector
+    gr_selector(isValue, secDimSize);
+
+    if (*isValue == 1) {
+
+      // both indices are constants
+      if (firstIndexIsValue == 1) {
+        offset = offset + (*(isValue + 1) * getSizeOfType(elemType));
+
+        resetIsValue(isValue);
+
+        talloc();
+
+        emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), offset);
+
+      // only second index is constant
+      } else {
+        emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), (*(isValue + 1) * getSizeOfType(elemType)));
+
+        resetIsValue(isValue);
+      }
+
+    // only first index is constant, second is already loaded into register
+    } else if (firstIndexIsValue == 1) {
+      multiplyWithTypeSize(elemType);
+
+      emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), offset);
+
+    // both indices are not constants
+    } else {
+      multiplyWithTypeSize(elemType);
+
+      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
+
+      tfree(1);
+    }
   }
 
-  if (symbol == SYM_RBRACKET) 
-    getSymbol();
-  else    
-    syntaxErrorSymbol(SYM_RBRACKET);
+  emitRFormat(OP_SPECIAL, getScope(entry), currentTemporary(), currentTemporary(), 0, FCT_ADDU);
 
   return elemType;
 }
@@ -2765,8 +2790,7 @@ int gr_factor(int* isValue) {
   hasCast = 0;
 
   // reset attribute
-  *isValue = 0;
-  *(isValue + 1) = 0;
+  resetIsValue(isValue);
 
   type = INT_T;
 
@@ -2968,8 +2992,8 @@ int gr_term(int* isValue) {
         } else {
 
             load_integer_after_check(*(isValue + 1));   // load right value into register
-            *isValue = 0;
-            *(isValue + 1) = 0;
+            resetIsValue(isValue);
+
             leftOperandRegister = previousTemporary();
             rightOperandRegister = currentTemporary();
         }
@@ -2978,8 +3002,8 @@ int gr_term(int* isValue) {
     } else if (lIsValue == 1) {
 
         load_integer_after_check(lValue);   // load left value into register
-        *isValue = 0;
-        *(isValue + 1) = 0;
+        resetIsValue(isValue);
+
         lIsValue = 0;
         leftOperandRegister = currentTemporary();
         rightOperandRegister = previousTemporary();
@@ -3114,8 +3138,7 @@ int gr_simpleExpression(int* isValue) {
             } else {
 
                 load_integer_after_check(*(isValue + 1));   // load right value into register
-                *isValue = 0;
-                *(isValue + 1) = 0;
+                resetIsValue(isValue);
                 leftOperandRegister = previousTemporary();
                 rightOperandRegister = currentTemporary();
             }
@@ -3124,8 +3147,7 @@ int gr_simpleExpression(int* isValue) {
         } else if (lIsValue == 1) {
 
             load_integer_after_check(lValue);   // load left value into register
-            *isValue = 0;
-            *(isValue + 1) = 0;
+            resetIsValue(isValue);
             lIsValue = 0;
             leftOperandRegister = currentTemporary();
             rightOperandRegister = previousTemporary();
@@ -3238,16 +3260,14 @@ int gr_logicalShift(int* isValue) {
 				    emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), *(isValue + 1), FCT_SRL);
 
                 useRegister = 0;
-                *isValue = 0;
-                *(isValue + 1) = 0;
+                resetIsValue(isValue);
             }
 
         // only left side is constant
         } else if (lIsValue == 1) {
 
             load_integer_after_check(lValue);   // load left value into register
-            *isValue = 0;
-            *(isValue + 1) = 0;
+            resetIsValue(isValue);
             lIsValue = 0;
             leftOperandRegister = currentTemporary();
             rightOperandRegister = previousTemporary();
@@ -3290,8 +3310,7 @@ int gr_expression(int* isValue) {
 
   if (*isValue == 1) {
     load_integer_after_check(*(isValue + 1));
-    *isValue = 0;
-    *(isValue + 1) = 0;
+    resetIsValue(isValue);
   }
 
   // assert: allocatedTemporaries == n + 1
@@ -3306,8 +3325,7 @@ int gr_expression(int* isValue) {
 
     if (*isValue == 1) {
       load_integer_after_check(*(isValue + 1));
-      *isValue = 0;
-      *(isValue + 1) = 0;
+      resetIsValue(isValue);
     }
 
     // assert: allocatedTemporaries == n + 2
@@ -4065,8 +4083,7 @@ void gr_cstar() {
 
   isValue = malloc(2 * SIZEOFINT);
 
-  *isValue = 0;
-  *(isValue + 1) = 0;
+  resetIsValue(isValue);
 
   while (symbol != SYM_EOF) {
     while (lookForType()) {
@@ -4248,6 +4265,28 @@ void fixRegisterInitialization() {
   // assert: allocatedTemporaries == 0
 
   binaryLength = savedBinaryLength;
+}
+
+void multiplyRegisterWith(int m) {
+    // assert: 0 <= m < 15
+
+    // load multiplication factor less than 2^15 to avoid sign extension
+    emitIFormat(OP_ADDIU, REG_ZR, nextTemporary(), m);
+    emitRFormat(OP_SPECIAL, currentTemporary(), nextTemporary(), 0, 0, FCT_MULTU);
+    emitRFormat(OP_SPECIAL, 0, 0, currentTemporary(), 0, FCT_MFLO);
+}
+
+void multiplyWithTypeSize(int type) {
+    int size;
+
+    size = getSizeOfType(type);
+
+    // assert: 0 <= size < 15
+
+    // load multiplication factor less than 2^15 to avoid sign extension
+    emitIFormat(OP_ADDIU, REG_ZR, nextTemporary(), size);
+    emitRFormat(OP_SPECIAL, currentTemporary(), nextTemporary(), 0, 0, FCT_MULTU);
+    emitRFormat(OP_SPECIAL, 0, 0, currentTemporary(), 0, FCT_MFLO);
 }
 
 // -----------------------------------------------------------------
@@ -7159,6 +7198,8 @@ int selfie(int argc, int* argv) {
         argv = argv + 2;
 
         selfie_compile();
+
+        printNumberOfSymbols();
 
       } else if (stringCompare((int*) *argv, (int*) "-o")) {
         binaryName = (int*) *(argv+1);
