@@ -19,15 +19,20 @@ letter           = "a" | ... | "z" | "A" | ... | "Z" .
 
 identifier       = letter { letter | digit | "_" } .
 
-type             = ( "int" [ "*" ] ) | ( "struct" identifier "*" ) .
+type             = "int" [ "*" ] .
 
 cast             = "(" type ")" .
 
-field            = type identifier ";" .
+struct           = "struct" identifier "*" identifier .
 
-record           = "struct" identifier "{" { field } "}" .
+field            = ( type identifier [ "[" integer "]" [ "[" integer "]" ] ] |
+                   struct ) ";" .
 
-array            = identifier "[" logicalShift "]" [ "[" logicalShift "]" ] .
+record           = "struct" identifier "{" { field } "}" ";" .
+
+selector         = "[" logicalShift "]" .
+
+array            = identifier selector [ selector ] .
 
 call             = identifier "(" [ expression { "," expression } ] ")" .
 
@@ -68,12 +73,14 @@ statement        = ( [ "*" ] identifier | array | "*" "(" expression ")" ) "="
                     if | 
                     return ";" .
 
-variable         = type identifier [ "[" integer "]" [ "[" integer "]" ] ] .
+variable         = type identifier [ "[" integer "]" [ "[" integer "]" ] ] | 
+                   struct .
 
 procedure        = "(" [ variable { "," variable } ] ")" 
                     ( ";" | "{" { variable ";" } { statement } "}" ) .
 
 cstar            = { record | type identifier [ "=" [ cast ] [ "-" ] literal ] ";" | 
+                   struct ";" |
                    type identifier "[" integer "]" [ "[" integer "]" ] ";" |
                    ( "void" | type ) identifier procedure } .
 ```

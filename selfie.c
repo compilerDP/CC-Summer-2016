@@ -285,9 +285,10 @@ int SYM_LLS          = 28; // <<
 int SYM_LRS          = 29; // >>
 int SYM_LBRACKET     = 30; // [
 int SYM_RBRACKET     = 31; // ]
+int SYM_STRUCT       = 32; // STRUCT
 
-int numberOfSymbols = 32;
-int SYMBOLS[32][2]; // array of strings representing symbols
+int numberOfSymbols = 33;
+int SYMBOLS[33][2]; // array of strings representing symbols
 
 int maxIdentifierLength = 64; // maximum number of characters in an identifier
 int maxIntegerLength    = 10; // maximum number of characters in an integer
@@ -351,6 +352,7 @@ void initScanner () {
     SYMBOLS[SYM_LRS][0]          = (int) ">>";
     SYMBOLS[SYM_LBRACKET][0]     = (int) "[";
     SYMBOLS[SYM_RBRACKET][0]     = (int) "]";
+    SYMBOLS[SYM_STRUCT][0]       = (int) "struct";
 
     i = 0;
 
@@ -389,14 +391,14 @@ int reportUndefinedProcedures();
 // |  1 | string     | identifier string, string literal
 // |  2 | line#      | source line number
 // |  3 | class      | VARIABLE, PROCEDURE, STRING, RECORD
-// |  4 | type       | INT_T, INTSTAR_T, VOID_T
+// |  4 | type       | INT_T, INTSTAR_T, VOID_T, ARRAY_T, RECORD_T
 // |  5 | value      | VARIABLE: initial value
 // |  6 | address    | VARIABLE: offset, PROCEDURE: address, STRING: offset, RECORD: offset
 // |  7 | scope      | REG_GP, REG_FP
 // |  8 | size       | ARRAY: number of elements, RECORD: sum of fields typesizes 
 // |  9 | elemType   | INT_T, INTSTAR_T
 // | 10 | secDimSize | size of second array dimension
-// | 11 | nextField  | pointer to next field (for RECORDS)
+// | 11 | nextField  | RECORD: pointer to definition or to the next field
 // +----+------------+
 
 int* getNextEntry(int* entry)  { return (int*) *entry; }
@@ -438,6 +440,7 @@ int INT_T     = 1;
 int INTSTAR_T = 2;
 int VOID_T    = 3;
 int ARRAY_T   = 4;
+int RECORD_T  = 5;
 
 // symbol tables
 int GLOBAL_TABLE  = 1;
@@ -470,6 +473,7 @@ int isStarOrDivOrModulo();
 int isPlusOrMinus();
 int isLogicalShift();
 int isComparison();
+int isType();
 
 int lookForFactor();
 int lookForStatement();
@@ -497,6 +501,9 @@ void resetIsValue(int* isValue);
 
 void gr_selector(int* isValue, int arraySize);
 int  gr_call(int* procedure, int* isValue);
+int  gr_struct(int* record);
+int  gr_field();
+int  gr_record(int* record);
 int  gr_array(int* variable, int* isValue);
 int  gr_factor(int* isValue);
 int  gr_term(int* isValue);
@@ -677,10 +684,10 @@ int OP_SW      = 43;
 int* OPCODES; // array of strings representing MIPS opcodes
 
 int FCT_NOP     = 0;
-int FCT_SLL 	= 0;
+int FCT_SLL 	  = 0;
 int FCT_SRL	    = 2;
-int FCT_SLLV	= 4;
-int FCT_SRLV	= 6;
+int FCT_SLLV	  = 4;
+int FCT_SRLV	  = 6;
 int FCT_JR      = 8;
 int FCT_SYSCALL = 12;
 int FCT_MFHI    = 16;
@@ -699,7 +706,7 @@ int opcode      = 0;
 int rs          = 0;
 int rt          = 0;
 int rd          = 0;
-int shamt   	= 0;
+int shamt   	  = 0;
 int immediate   = 0;
 int function    = 0;
 int instr_index = 0;
@@ -766,7 +773,7 @@ void selfie_load();
 
 // ------------------------ GLOBAL CONSTANTS --------------s---------
 
-int maxBinaryLength = 262144;//131072; // 128KB
+int maxBinaryLength = 262144; // 256KB
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1751,6 +1758,8 @@ int identifierOrKeyword() {
     return SYM_RETURN;
   if (identifierStringMatch(SYM_VOID))
     return SYM_VOID;
+  if (identifierStringMatch(SYM_STRUCT))
+    return SYM_STRUCT;
   else
     return SYM_IDENTIFIER;
 }
@@ -2236,6 +2245,15 @@ int isComparison() {
     return 0;
 }
 
+int isType() {
+  if (symbol == SYM_INT)
+    return 1;
+  else if (symbol == SYM_STRUCT)
+    return 1;
+  else
+    return 0;
+}
+
 int lookForFactor() {
   if (symbol == SYM_LPARENTHESIS)
     return 0;
@@ -2278,6 +2296,8 @@ int lookForType() {
   else if (symbol == SYM_VOID)
     return 0;
   else if (symbol == SYM_EOF)
+    return 0;
+  else if (symbol == SYM_STRUCT)
     return 0;
   else
     return 1;
@@ -2383,6 +2403,8 @@ int* putType(int type) {
     return (int*) "int*";
   else if (type == VOID_T)
     return (int*) "void";
+  else if (type == RECORD_T)
+    return (int*) "struct";
   else
     return (int*) "unknown";
 }
@@ -2673,6 +2695,47 @@ void gr_selector(int* isValue, int arraySize) {
   else
     syntaxErrorSymbol(SYM_RBRACKET);
 }
+
+int gr_struct(int* record) {
+  return 1;
+}
+
+int gr_field() {
+
+  return 1;
+}
+
+int gr_record(int* record) {
+
+  getSymbol();
+
+  while (symbol != SYM_RBRACE) {
+
+    if (isType())
+      gr_field();
+
+    else if (symbol == SYM_EOF)
+      exit(-1);
+    else
+      syntaxErrorMessage((int*) "type expected in record");
+  }
+    
+  if (symbol == SYM_RBRACE) {
+    getSymbol();
+
+    if (symbol == SYM_SEMICOLON)
+      getSymbol();
+    else
+      syntaxErrorSymbol(SYM_SEMICOLON); 
+  } else
+    syntaxErrorSymbol(SYM_RBRACE);
+
+  return RECORD_T;
+}
+
+struct test {
+
+};
 
 int gr_array(int* variable, int* isValue) {
   int* entry;
@@ -3781,6 +3844,7 @@ int gr_type() {
 
       getSymbol();
     }
+
   } else
     syntaxErrorSymbol(SYM_INT);
 
@@ -4112,6 +4176,30 @@ void gr_cstar() {
         getSymbol();
 
         gr_procedure(variableOrProcedureName, type, isValue);
+      } else
+        syntaxErrorSymbol(SYM_IDENTIFIER);
+
+    // struct identifier 
+    } else if (symbol == SYM_STRUCT) {
+
+      getSymbol();
+
+      if (symbol == SYM_IDENTIFIER) {
+        variableOrProcedureName = identifier;
+
+        getSymbol();
+
+        // struct identifier {
+        if (symbol == SYM_LBRACE) 
+          type = gr_record(variableOrProcedureName);
+
+        // struct identifier *
+        else if (symbol == SYM_ASTERISK) 
+          type = gr_struct(variableOrProcedureName);
+
+        else
+          syntaxErrorSymbol(SYM_LBRACE);
+
       } else
         syntaxErrorSymbol(SYM_IDENTIFIER);
 
