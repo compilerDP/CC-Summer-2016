@@ -147,6 +147,7 @@ int CHAR_RBRACKET     = ']';
 
 int SIZEOFINT     = 4; // must be the same as WORDSIZE
 int SIZEOFINTSTAR = 4; // must be the same as WORDSIZE
+int SIZEOFRECORDSTAR = 4;
 
 int* power_of_two_table;
 
@@ -1565,6 +1566,8 @@ int getSizeOfType(int type) {
     return SIZEOFINT;
   else if (type == INTSTAR_T)
     return SIZEOFINTSTAR;
+  else if (type == RECORD_T)
+    return SIZEOFRECORDSTAR;
   else
     return 0;
 }
@@ -2714,6 +2717,8 @@ int* gr_field() {
   int elemType;
   int* entry;
   int fieldSize;
+  int* nextField;
+  int* recordName;
 
   arraySize = 0;
   secDimSize = 0;
@@ -2787,39 +2792,77 @@ int* gr_field() {
     } else
       syntaxErrorSymbol(SYM_IDENTIFIER);
 
-  // struct identifier * identifier;
+    nextField = (int*) 0;
+
+  // struct identifier * identifier ;
   } else if (symbol == SYM_STRUCT) {
     type = RECORD_T;
 
+    fieldSize = getSizeOfType(type);
+
     getSymbol();
+
+    if (symbol == SYM_IDENTIFIER) {
+      recordName = identifier;
+      nextField = getSymbolTableEntry(recordName, RECORD);
+  
+      getSymbol();
+
+      if (symbol == SYM_ASTERISK) {
+        getSymbol();
+
+        if (symbol == SYM_IDENTIFIER) {
+          name = identifier;
+
+          getSymbol();
+
+          if (symbol == SYM_SEMICOLON)
+            getSymbol();
+          else
+            syntaxErrorSymbol(SYM_SEMICOLON);
+        } else
+          syntaxErrorSymbol(SYM_IDENTIFIER);
+      } else
+        syntaxErrorSymbol(SYM_ASTERISK);
+    } else
+      syntaxErrorSymbol(SYM_IDENTIFIER);
   }
 
-  entry = createSymbolTableEntry(GLOBAL_TABLE, name, lineNumber, RECORD, type, 0, 0, arraySize, elemType, secDimSize, fieldSize, (int*) 0);
+  entry = createSymbolTableEntry(GLOBAL_TABLE, name, lineNumber, RECORD, type, 0, 0, arraySize, elemType, secDimSize, fieldSize, nextField);
 
   return entry;
 }
 
 int gr_record(int* record) {
   int* recordEntry;
-  int* lastFieldEntry;
+  int* currentEntry;
+  int* lastEntry;
   int offset;
 
   offset = 0;
 
   recordEntry = createSymbolTableEntry(GLOBAL_TABLE, record, lineNumber, RECORD, RECORD_T, 0, 0, 0, 0, 0, 0, (int*) 0);
+  currentEntry = recordEntry;
 
   getSymbol();
 
   while (symbol != SYM_RBRACE) {
+    lastEntry = currentEntry;
 
-    if (isType())
-      lastFieldEntry = gr_field();
+    if (isType()) {
+      currentEntry = gr_field();
+      
+      setNextField(lastEntry, currentEntry);
 
-    else if (symbol == SYM_EOF)
+      offset = offset + getRecordSize(currentEntry);
+
+    } else if (symbol == SYM_EOF)
       exit(-1);
     else
       syntaxErrorMessage((int*) "type expected in record");
   }
+
+  setRecordSize(recordEntry, offset);
     
   if (symbol == SYM_RBRACE) {
     getSymbol();
@@ -2839,6 +2882,7 @@ struct test {
   int* b;
   int c[5];
   int d[2][3];
+  struct test * e;
 };
 
 int gr_array(int* variable, int* isValue) {
@@ -7396,7 +7440,7 @@ int selfie(int argc, int* argv) {
 
         selfie_compile();
 
-        printNumberOfSymbols();
+        //printNumberOfSymbols();
 
       } else if (stringCompare((int*) *argv, (int*) "-o")) {
         binaryName = (int*) *(argv+1);
