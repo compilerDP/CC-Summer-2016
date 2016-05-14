@@ -19,9 +19,13 @@ letter           = "a" | ... | "z" | "A" | ... | "Z" .
 
 identifier       = letter { letter | digit | "_" } .
 
-type             = "int" [ "*" ] .
+type             = ( "int" [ "*" ] ) | ( "struct" identifier "*" ) .
 
 cast             = "(" type ")" .
+
+field            = type identifier ";" .
+
+record           = "struct" identifier "{" { field } "}" .
 
 array            = identifier "[" logicalShift "]" [ "[" logicalShift "]" ] .
 
@@ -64,12 +68,12 @@ statement        = ( [ "*" ] identifier | array | "*" "(" expression ")" ) "="
                     if | 
                     return ";" .
 
-variable         = type identifier [ "[" integer "]"  [ "[" integer "]" ] ] .
+variable         = type identifier [ "[" integer "]" [ "[" integer "]" ] ] .
 
 procedure        = "(" [ variable { "," variable } ] ")" 
                     ( ";" | "{" { variable ";" } { statement } "}" ) .
 
-cstar            = { type identifier [ "=" [ cast ] [ "-" ] literal ] ";" | 
+cstar            = { record | type identifier [ "=" [ cast ] [ "-" ] literal ] ";" | 
                    type identifier "[" integer "]" [ "[" integer "]" ] ";" |
                    ( "void" | type ) identifier procedure } .
 ```
