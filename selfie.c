@@ -404,6 +404,23 @@ int reportUndefinedProcedures();
 // | 13 | fieldsPtr  | RECORD variable: pointer to fields
 // +----+------------+
 
+struct symbolTableEntry {
+  int* nextEntry;
+  int* string;
+  int  line;
+  int  class;
+  int  type;
+  int  value;
+  int  address;
+  int  scope;
+  int  arraySize;
+  int  elemType;
+  int  secDimSize;
+  int  recordSize;
+  int* nextField;
+  int* fieldsPtr;
+};
+
 int* getNextEntry(int* entry)  { return (int*) *entry; }
 int* getString(int* entry)     { return (int*) *(entry +  1); }
 int  getLineNumber(int* entry) { return        *(entry +  2); }
