@@ -505,7 +505,7 @@ void resetIsValue(int* isValue);
 
 void gr_selector(int* isValue, int arraySize);
 int  gr_call(int* procedure, int* isValue);
-int  gr_struct(int* record);
+int  gr_struct();
 int* gr_field();
 int  gr_record(int* record);
 int  gr_array(int* variable, int* isValue);
@@ -2705,8 +2705,39 @@ void gr_selector(int* isValue, int arraySize) {
     syntaxErrorSymbol(SYM_RBRACKET);
 }
 
-int gr_struct(int* record) {
-  return 1;
+int gr_struct() {
+  int* record;
+  int* name;
+
+  getSymbol();
+
+  if (symbol == SYM_IDENTIFIER) {
+    record = identifier;
+
+    getSymbol();
+
+    if (symbol == SYM_ASTERISK) {
+      getSymbol();
+
+      if (symbol == SYM_IDENTIFIER) {
+        name = identifier;
+      
+        getSymbol();
+
+        if (symbol == SYM_SEMICOLON)
+          getSymbol();
+        else
+          syntaxErrorSymbol(SYM_SEMICOLON);
+      } else
+        syntaxErrorSymbol(SYM_IDENTIFIER);
+    } else
+      syntaxErrorSymbol(SYM_ASTERISK);
+  } else
+        syntaxErrorSymbol(SYM_IDENTIFIER);
+
+  
+
+  return RECORD_T;
 }
 
 int* gr_field() {
@@ -2884,6 +2915,8 @@ struct test {
   int d[2][3];
   struct test * e;
 };
+
+struct test * test;
 
 int gr_array(int* variable, int* isValue) {
   int* entry;
@@ -4295,6 +4328,7 @@ void gr_cstar() {
   int secDimSize;
   int* variableOrProcedureName;
   int* isValue;
+  int* structName;
 
   arraySize = 0;
 
@@ -4342,12 +4376,25 @@ void gr_cstar() {
           type = gr_record(variableOrProcedureName);
 
         // struct identifier *
-        else if (symbol == SYM_ASTERISK) 
-          type = gr_struct(variableOrProcedureName);
+        else if (symbol == SYM_ASTERISK) {
+          type = RECORD_T;
+          structName = variableOrProcedureName;
 
-        else
+          getSymbol();
+
+          if (symbol == SYM_IDENTIFIER) {
+            variableOrProcedureName = identifier;
+
+            getSymbol();
+
+            if (symbol == SYM_SEMICOLON)
+              getSymbol();
+            else
+              syntaxErrorSymbol(SYM_SEMICOLON);
+          } else
+            syntaxErrorSymbol(SYM_IDENTIFIER);
+       } else
           syntaxErrorSymbol(SYM_LBRACE);
-
       } else
         syntaxErrorSymbol(SYM_IDENTIFIER);
 
