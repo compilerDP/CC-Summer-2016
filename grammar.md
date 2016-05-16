@@ -23,10 +23,8 @@ type             = "int" [ "*" ] .
 
 cast             = "(" type ")" .
 
-struct           = "struct" identifier "*" identifier .
-
 field            = ( type identifier [ "[" integer "]" [ "[" integer "]" ] ] |
-                   struct ) ";" .
+                   "struct" identifier "*" identifier ) ";" .
 
 record           = "struct" identifier "{" { field } "}" ";" .
 
@@ -74,13 +72,13 @@ statement        = ( [ "*" ] identifier | array | "*" "(" expression ")" ) "="
                     return ";" .
 
 variable         = type identifier [ "[" integer "]" [ "[" integer "]" ] ] | 
-                   struct .
+                   "struct" identifier "*" identifier .
 
 procedure        = "(" [ variable { "," variable } ] ")" 
                     ( ";" | "{" { variable ";" } { statement } "}" ) .
 
 cstar            = { record | type identifier [ "=" [ cast ] [ "-" ] literal ] ";" | 
-                   struct ";" |
+                   "struct" identifier "*" identifier ";" |
                    type identifier "[" integer "]" [ "[" integer "]" ] ";" |
                    ( "void" | type ) identifier procedure } .
 ```

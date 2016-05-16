@@ -525,7 +525,6 @@ void resetIsValue(int* isValue);
 
 void gr_selector(int* isValue, int arraySize);
 int  gr_call(int* procedure, int* isValue);
-int  gr_struct();
 int* gr_field();
 int  gr_record(int* record);
 int  gr_array(int* variable, int* isValue);
@@ -2479,7 +2478,11 @@ int load_variable(int* variable) {
 
   talloc();
 
-  emitIFormat(OP_LW, getScope(entry), currentTemporary(), getAddress(entry));
+  if (getType(entry) == ARRAY_T)
+    emitIFormat(OP_ADDIU, getScope(entry), currentTemporary(), getAddress(entry));
+
+  else
+    emitIFormat(OP_LW, getScope(entry), currentTemporary(), getAddress(entry));
 
   return getType(entry);
 }
@@ -2648,12 +2651,14 @@ int gr_call(int* procedure, int* isValue) {
   // assert: allocatedTemporaries == 0
 
   if (isExpression()) {
-    gr_expression(isValue);
+    type = gr_expression(isValue);
 
     // TODO: check if types/number of parameters is correct
 
     // push first parameter onto stack
-    emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+    if (type != ARRAY_T)
+      emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+
     emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
 
     tfree(1);
@@ -2661,10 +2666,12 @@ int gr_call(int* procedure, int* isValue) {
     while (symbol == SYM_COMMA) {
       getSymbol();
 
-      gr_expression(isValue);
+      type = gr_expression(isValue);
 
       // push more parameters onto stack
-      emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+      if (type != ARRAY_T)
+        emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+
       emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
 
       tfree(1);
@@ -2724,41 +2731,6 @@ void gr_selector(int* isValue, int arraySize) {
     getSymbol();
   else
     syntaxErrorSymbol(SYM_RBRACKET);
-}
-
-int gr_struct() {
-  int* record;
-  int* name;
-
-  getSymbol();
-
-  if (symbol == SYM_IDENTIFIER) {
-    record = identifier;
-
-    getSymbol();
-
-    if (symbol == SYM_ASTERISK) {
-      getSymbol();
-
-      if (symbol == SYM_IDENTIFIER) {
-        name = identifier;
-      
-        getSymbol();
-
-        if (symbol == SYM_SEMICOLON)
-          getSymbol();
-        else
-          syntaxErrorSymbol(SYM_SEMICOLON);
-      } else
-        syntaxErrorSymbol(SYM_IDENTIFIER);
-    } else
-      syntaxErrorSymbol(SYM_ASTERISK);
-  } else
-        syntaxErrorSymbol(SYM_IDENTIFIER);
-
-  
-
-  return RECORD_T;
 }
 
 int* gr_field() {
@@ -2928,16 +2900,6 @@ int gr_record(int* record) {
 
   return RECORD_T;
 }
-
-struct test {
-  int a;
-  int* b;
-  int c[5];
-  int d[2][3];
-  struct test * e;
-};
-
-struct test * test;
 
 int gr_array(int* variable, int* isValue) {
   int* entry;
@@ -4065,6 +4027,7 @@ void gr_variable(int offset, int* additionalMemorySpace) {
   arraySize = 0;
   secDimSize = 0;
 
+  // struct identifier * identifier
   if (symbol == SYM_STRUCT) {
     type = RECORD_T;
 
@@ -4237,7 +4200,6 @@ void gr_initialization(int* name, int offset, int type) {
 void gr_procedure(int* procedure, int returnType, int* isValue) {
   int numberOfParameters;
   int parameters;
-  int parameterOffset;
   int localVariables;
   int functionStart;
   int* additionalMemorySpace;
@@ -4246,7 +4208,6 @@ void gr_procedure(int* procedure, int returnType, int* isValue) {
   currentProcedureName = procedure;
 
   numberOfParameters = 0;
-  parameterOffset = 0;
 
   additionalMemorySpace = malloc(SIZEOFINT);
   *additionalMemorySpace = 0;
@@ -4272,17 +4233,9 @@ void gr_procedure(int* procedure, int returnType, int* isValue) {
 
       parameters = 0;
 
-      // 4 bytes offset to skip frame pointer
-      parameterOffset = SIZEOFINTSTAR;
-
       while (parameters < numberOfParameters) {
-        if (getType(entry) == ARRAY_T)
-          parameterOffset = parameterOffset + (getArraySize(entry) * getSizeOfType(getElemType(entry)) * getSecDimSize(entry));
-
-        else
-          parameterOffset = parameterOffset + getSizeOfType(getType(entry));
- 
-        setAddress(entry, parameterOffset);
+        // 8 bytes offset to skip frame pointer and link
+        setAddress(entry, parameters * WORDSIZE + 2 * WORDSIZE);
 
         parameters = parameters + 1;
         entry    = getNextEntry(entry);
@@ -7676,7 +7629,6 @@ int selfie(int argc, int* argv) {
 }
 
 int main(int argc, int* argv) {
-  struct test * x;
 
   initLibrary();
 
