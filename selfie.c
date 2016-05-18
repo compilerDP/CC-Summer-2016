@@ -523,7 +523,7 @@ void help_procedure_epilogue(int parameters);
 
 void resetIsValue(int* isValue);
 
-void gr_selector(int* isValue, int arraySize);
+void gr_selector(int* isValue, int* entry);
 int  gr_call(int* procedure, int* isValue);
 int* gr_field();
 int  gr_record(int* record);
@@ -2656,8 +2656,7 @@ int gr_call(int* procedure, int* isValue) {
     // TODO: check if types/number of parameters is correct
 
     // push first parameter onto stack
-    if (type != ARRAY_T)
-      emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+    emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
 
     emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
 
@@ -2669,8 +2668,7 @@ int gr_call(int* procedure, int* isValue) {
       type = gr_expression(isValue);
 
       // push more parameters onto stack
-      if (type != ARRAY_T)
-        emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+      emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
 
       emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
 
@@ -2702,35 +2700,6 @@ int gr_call(int* procedure, int* isValue) {
 
   // assert: allocatedTemporaries == n
   return type;
-}
-
-void gr_selector(int* isValue, int arraySize) {
-  int indexType;
-  int arrayIndex;
-
-  arrayIndex = 0;
-
-  indexType = gr_logicalShift(isValue); 
-
-  if (indexType != INT_T)
-    typeWarning(INT_T, indexType);
-
-  // index is a constant
-  if (*isValue == 1) {
-
-    arrayIndex = *(isValue + 1);
-
-    if (arrayIndex < 0)
-      syntaxErrorMessage((int*) "array index out of bound");
-
-    else if (arrayIndex >= arraySize)
-      syntaxErrorMessage((int*) "array index out of bound");
-  }
-
-  if (symbol == SYM_RBRACKET)
-    getSymbol();
-  else
-    syntaxErrorSymbol(SYM_RBRACKET);
 }
 
 int* gr_field() {
@@ -2901,111 +2870,83 @@ int gr_record(int* record) {
   return RECORD_T;
 }
 
+void gr_selector(int* isValue, int* entry) {
+  int indexType;
+  int arrayIndex;
+
+  arrayIndex = 0;
+
+  indexType = gr_logicalShift(isValue); 
+
+  if (indexType != INT_T)
+    typeWarning(INT_T, indexType);
+
+  // index is a constant
+  if (*isValue == 1) {
+
+    arrayIndex = *(isValue + 1);
+
+    resetIsValue(isValue);
+
+    if (arrayIndex < 0)
+      syntaxErrorMessage((int*) "array index out of bound");
+
+    else if (arrayIndex >= getArraySize(entry))
+      syntaxErrorMessage((int*) "array index out of bound");
+
+    arrayIndex = arrayIndex * getSizeOfType(getElemType(entry));
+
+    talloc();
+    emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), arrayIndex);
+
+  // index is already loaded into register
+  } else
+    multiplyWithTypeSize(getElemType(entry));
+
+  if (symbol == SYM_RBRACKET)
+    getSymbol();
+  else
+    syntaxErrorSymbol(SYM_RBRACKET);
+}
+
 int gr_array(int* variable, int* isValue) {
   int* entry;
-  int offset;
   int elemType;
   int secDimSize;
-  int firstIndexIsValue;
-  int firstIndex;
 
   entry = getVariable(variable);
-  offset = getAddress(entry);
   elemType = getElemType(entry);
   secDimSize = getSecDimSize(entry);
-
-  firstIndexIsValue = 0;
-  firstIndex = 0;
 
   if (getType(entry) != ARRAY_T)
     typeWarning(ARRAY_T, getType(entry));
 
-  gr_selector(isValue, getArraySize(entry));
+  // load address of array into register
+  talloc();
+  emitIFormat(OP_ADDIU, getScope(entry), currentTemporary(), getAddress(entry));
 
-  // one dimensional array
-  if (secDimSize == 1) {
-
-    // constant folding
-    if (*isValue == 1) {
-      offset = offset + (*(isValue + 1) * getSizeOfType(elemType));
-
-      resetIsValue(isValue);
-
-      talloc();
-
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), offset);
-
-    // index is loaded into register
-    } else {
-      multiplyWithTypeSize(elemType);
-
-      emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), offset);
-    }
+  gr_selector(isValue, entry);
 
   // two dimensional array
-  } else if (secDimSize > 1) {
-
-  // first selector
-    // first index is constant
-    if (*isValue == 1) {
-      firstIndexIsValue = 1;
-      firstIndex = *(isValue + 1);
-
-      resetIsValue(isValue);
-      
-      offset = offset + (firstIndex * getSizeOfType(elemType) * secDimSize);
-
-    // first index incl. offset is loaded into register
-    } else {
-      multiplyRegisterWith(getSizeOfType(elemType) * secDimSize);
-
-      emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), offset);
-    }
+  if (secDimSize > 1) {
+    multiplyRegisterWith(secDimSize);
 
     if (symbol == SYM_LBRACKET)
       getSymbol();
     else
       syntaxErrorSymbol(SYM_LBRACKET);
 
-  // second selector
-    gr_selector(isValue, secDimSize);
+    gr_selector(isValue, entry);
 
-    if (*isValue == 1) {
+    emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
 
-      // both indices are constants
-      if (firstIndexIsValue == 1) {
-        offset = offset + (*(isValue + 1) * getSizeOfType(elemType));
-
-        resetIsValue(isValue);
-
-        talloc();
-
-        emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), offset);
-
-      // only second index is constant
-      } else {
-        emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), (*(isValue + 1) * getSizeOfType(elemType)));
-
-        resetIsValue(isValue);
-      }
-
-    // only first index is constant, second is already loaded into register
-    } else if (firstIndexIsValue == 1) {
-      multiplyWithTypeSize(elemType);
-
-      emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), offset);
-
-    // both indices are not constants
-    } else {
-      multiplyWithTypeSize(elemType);
-
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
-
-      tfree(1);
-    }
+    tfree(1);
   }
 
-  emitRFormat(OP_SPECIAL, getScope(entry), currentTemporary(), currentTemporary(), 0, FCT_ADDU);
+  // add address of array and index
+  emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
+
+  tfree(1);
 
   return elemType;
 }
