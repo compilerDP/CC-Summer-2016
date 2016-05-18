@@ -2346,7 +2346,7 @@ void talloc() {
 int currentTemporary() {
   if (allocatedTemporaries > 0)
     return allocatedTemporaries + REG_A3;
-  else {println();print((int*) "curr reg < 0");println();
+  else {
     syntaxErrorMessage((int*) "illegal register access");
 
     exit(-1);
@@ -2356,7 +2356,7 @@ int currentTemporary() {
 int previousTemporary() {
   if (allocatedTemporaries > 1)
     return currentTemporary() - 1;
-  else {println();print((int*) "prev reg < 0");println();
+  else {
     syntaxErrorMessage((int*) "illegal register access");
 
     exit(-1);
@@ -3998,7 +3998,10 @@ void gr_variable(int offset, int* additionalMemorySpace) {
 
           recordEntry = getSymbolTableEntry(recordName, RECORD);
 
-          fields = malloc(getRecordSize(recordEntry));
+          if (offset == 0)
+            fields = (int*) 0;
+          else
+            fields = malloc(getRecordSize(recordEntry));
 
           createSymbolTableEntry(LOCAL_TABLE, variable, lineNumber, VARIABLE, type, 0, offset, 0, 0, 0, 0, recordEntry, fields);
 
@@ -4295,7 +4298,6 @@ void gr_cstar() {
   int* recordName;
   int* recordEntry;
   int* fields;
-
   arraySize = 0;
 
   isValue = malloc(2 * SIZEOFINT);
