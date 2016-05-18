@@ -2913,17 +2913,24 @@ int gr_array(int* variable, int* isValue) {
   int* entry;
   int elemType;
   int secDimSize;
+  int offset;
 
   entry = getVariable(variable);
   elemType = getElemType(entry);
   secDimSize = getSecDimSize(entry);
+  offset = getAddress(entry);
 
   if (getType(entry) != ARRAY_T)
     typeWarning(ARRAY_T, getType(entry));
 
-  // load address of array into register
   talloc();
-  emitIFormat(OP_ADDIU, getScope(entry), currentTemporary(), getAddress(entry));
+
+  // load address of array into register
+  if (offset > 0)   // array is given as parameter
+    emitIFormat(OP_LW, getScope(entry), currentTemporary(), getAddress(entry));
+
+  else
+    emitIFormat(OP_ADDIU, getScope(entry), currentTemporary(), getAddress(entry));
 
   gr_selector(isValue, entry);
 
@@ -3283,8 +3290,10 @@ int gr_simpleExpression(int* isValue) {
 
         if (lIsValue == 0) 
             emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), 0, FCT_SUBU);
-        else
+        else {
             lValue = -lValue;
+            *(isValue + 1) = lValue;
+        }
     }
 
     // + or -?
