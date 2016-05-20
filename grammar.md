@@ -28,6 +28,8 @@ field            = ( type identifier [ "[" integer "]" [ "[" integer "]" ] ] |
 
 record           = "struct" identifier "{" { field } "}" ";" .
 
+fieldAccess      = identifier "->" identifier .
+
 selector         = "[" logicalShift "]" .
 
 array            = identifier selector [ selector ] .
@@ -38,6 +40,7 @@ literal          = integer | "'" ascii_character "'" .
 
 factor           = [ cast ] 
                     ( [ "*" ] ( identifier | "(" expression ")" ) |
+                      fieldAccess |
                       array |
                       call |
                       literal |
@@ -64,7 +67,7 @@ if               = "if" "(" expression ")"
 
 return           = "return" [ expression ] .
 
-statement        = ( [ "*" ] identifier | array | "*" "(" expression ")" ) "="
+statement        = ( [ "*" ] identifier | fieldAccess | array | "*" "(" expression ")" ) "="
                       expression ";" |
                     call ";" | 
                     while | 
