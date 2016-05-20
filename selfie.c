@@ -287,9 +287,10 @@ int SYM_LRS          = 29; // >>
 int SYM_LBRACKET     = 30; // [
 int SYM_RBRACKET     = 31; // ]
 int SYM_STRUCT       = 32; // STRUCT
+int SYM_ARROW        = 33; // ->
 
-int numberOfSymbols = 33;
-int SYMBOLS[33][2]; // array of strings representing symbols
+int numberOfSymbols = 34;
+int SYMBOLS[34][2]; // array of strings representing symbols
 
 int maxIdentifierLength = 64; // maximum number of characters in an identifier
 int maxIntegerLength    = 10; // maximum number of characters in an integer
@@ -354,6 +355,7 @@ void initScanner () {
     SYMBOLS[SYM_LBRACKET][0]     = (int) "[";
     SYMBOLS[SYM_RBRACKET][0]     = (int) "]";
     SYMBOLS[SYM_STRUCT][0]       = (int) "struct";
+    SYMBOLS[SYM_ARROW][0]        = (int) "->";
 
     i = 0;
 
@@ -526,7 +528,8 @@ void resetIsValue(int* isValue);
 void gr_selector(int* isValue, int* entry);
 int  gr_call(int* procedure, int* isValue);
 int* gr_field();
-int  gr_record(int* record);
+int  gr_record(int* recordName);
+int  gr_fieldAccess(int* recordName, int* isValue);
 int  gr_array(int* variable, int* isValue);
 int  gr_factor(int* isValue);
 int  gr_term(int* isValue);
@@ -1963,7 +1966,13 @@ int getSymbol() {
   } else if (character == CHAR_DASH) {
     getCharacter();
 
-    symbol = SYM_MINUS;
+    if (character == CHAR_GT) {
+      getCharacter();
+
+      symbol = SYM_ARROW;
+
+    } else
+      symbol = SYM_MINUS;
 
   } else if (character == CHAR_ASTERISK) {
     getCharacter();
@@ -2826,7 +2835,7 @@ int* gr_field() {
   return entry;
 }
 
-int gr_record(int* record) {
+int gr_record(int* recordName) {
   int* recordEntry;
   int* currentEntry;
   int* lastEntry;
@@ -2834,7 +2843,7 @@ int gr_record(int* record) {
 
   offset = 0;
 
-  recordEntry = createSymbolTableEntry(GLOBAL_TABLE, record, lineNumber, RECORD, RECORD_T, 0, 0, 0, 0, 0, 0, (int*) 0, (int*) 0);
+  recordEntry = createSymbolTableEntry(GLOBAL_TABLE, recordName, lineNumber, RECORD, RECORD_T, 0, 0, 0, 0, 0, 0, (int*) 0, (int*) 0);
   currentEntry = recordEntry;
 
   getSymbol();
@@ -2868,6 +2877,12 @@ int gr_record(int* record) {
     syntaxErrorSymbol(SYM_RBRACE);
 
   return RECORD_T;
+}
+
+int gr_fieldAccess(int* recordName, int* isValue) {
+
+
+  return 1;
 }
 
 void gr_selector(int* isValue, int* entry) {
@@ -3071,6 +3086,12 @@ int gr_factor(int* isValue) {
       type = gr_array(variableOrProcedureName, isValue);
       
       emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
+
+    // record field access: identifier "->" identifier
+    } else if (symbol == SYM_ARROW) {
+      getSymbol();
+
+      type = gr_fieldAccess(variableOrProcedureName, isValue);
 
     } else
       // variable access: identifier
