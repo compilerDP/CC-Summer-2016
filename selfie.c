@@ -3950,13 +3950,17 @@ void gr_statement(int* isValue) {
 
       rtype = gr_expression(isValue);
 
-      // recordVariable = malloc(...);
-      if (ltype == RECORD_T) {
-        if (rtype != INTSTAR_T)
-          typeWarning(INTSTAR_T, rtype);
+      if (ltype != rtype) {
 
-      } else if (ltype != rtype)
-        typeWarning(ltype, rtype);
+        // recordVariable = malloc(...);
+        if (ltype == RECORD_T) {
+
+          if (rtype != INTSTAR_T)
+            typeWarning(INTSTAR_T, rtype);
+
+        } else
+          typeWarning(ltype, rtype);
+      }
 
       emitIFormat(OP_SW, getScope(entry), currentTemporary(), getAddress(entry));
 
