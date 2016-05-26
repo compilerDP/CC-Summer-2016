@@ -2865,11 +2865,17 @@ int gr_fieldAccess(int* recordVariable) {
         fieldEntry = getNextField(fieldEntry);
     }
 
-    offset = getAddress(variableEntry) + getAddress(fieldEntry);
+    offset = getAddress(fieldEntry);
+
+    load_variable(recordVariable);
 
     talloc();
 
-    emitIFormat(OP_ADDIU, getScope(variableEntry), currentTemporary(), offset);
+    emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), offset);
+
+    emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
+
+    tfree(1);
 
   } else
     syntaxErrorSymbol(SYM_IDENTIFIER);
@@ -3944,7 +3950,12 @@ void gr_statement(int* isValue) {
 
       rtype = gr_expression(isValue);
 
-      if (ltype != rtype)
+      // recordVariable = malloc(...);
+      if (ltype == RECORD_T) {
+        if (rtype != INTSTAR_T)
+          typeWarning(INTSTAR_T, rtype);
+
+      } else if (ltype != rtype)
         typeWarning(ltype, rtype);
 
       emitIFormat(OP_SW, getScope(entry), currentTemporary(), getAddress(entry));
@@ -4387,9 +4398,7 @@ void gr_cstar() {
 
             allocatedMemory = allocatedMemory + getSizeOfType(type);
 
-            malloc(getRecordSize(recordEntry));
-
-            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, 0, 0, 0, recordEntry, getRecordSize(recordEntry), (int*) 0);   
+            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, 0, 0, 0, recordEntry, getRecordSize(recordEntry), (int*) 0); 
 
             if (symbol == SYM_SEMICOLON)
               getSymbol();
