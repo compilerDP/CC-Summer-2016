@@ -4386,7 +4386,7 @@ void gr_cstar() {
         if (symbol == SYM_LBRACE) 
           type = gr_record(variableOrProcedureName);
 
-        // struct identifier *
+        // struct identifier * identifier
         else if (symbol == SYM_ASTERISK) {
           type = RECORD_T;
           recordName = variableOrProcedureName;
@@ -4397,16 +4397,24 @@ void gr_cstar() {
             variableOrProcedureName = identifier;
 
             getSymbol();
+  
+            // declaration: struct identifier * identifier;
+            if (symbol == SYM_SEMICOLON) {
 
-            recordEntry = getSymbolTableEntry(recordName, RECORD);
+              recordEntry = getSymbolTableEntry(recordName, RECORD);
 
-            allocatedMemory = allocatedMemory + getSizeOfType(type);
+              allocatedMemory = allocatedMemory + getSizeOfType(type);
 
-            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, 0, 0, 0, recordEntry, getRecordSize(recordEntry), (int*) 0); 
-
-            if (symbol == SYM_SEMICOLON)
+              createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, 0, 0, 0, recordEntry, getRecordSize(recordEntry), (int*) 0); 
               getSymbol();
-            else
+
+            // function definition: struct identifier * identifier()
+            } else if (symbol == SYM_LPARENTHESIS) {
+              type = RECORD_T;
+
+              gr_procedure(variableOrProcedureName, type, isValue);
+
+            } else
               syntaxErrorSymbol(SYM_SEMICOLON);
           } else
             syntaxErrorSymbol(SYM_IDENTIFIER);
