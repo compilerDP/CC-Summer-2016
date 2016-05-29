@@ -534,7 +534,7 @@ void gr_selector(int* isValue, struct symbolTableEntry* entry);
 int  gr_call(int* procedure, int* isValue);
 struct symbolTableEntry* gr_field();
 int  gr_record(int* recordName);
-int  gr_fieldAccess(int* recordVariable);
+int  gr_fieldAccess(int* recordVariable, int* isValue);
 int  gr_array(int* variable, int* isValue);
 int  gr_factor(int* isValue);
 int  gr_term(int* isValue);
@@ -2447,6 +2447,8 @@ int* putType(int type) {
     return (int*) "int*";
   else if (type == VOID_T)
     return (int*) "void";
+  else if (type == ARRAY_T)
+    return (int*) "array";
   else if (type == RECORD_T)
     return (int*) "struct";
   else
@@ -2719,11 +2721,18 @@ int gr_call(int* procedure, int* isValue) {
 
 struct symbolTableEntry* gr_field() {
   int type;
+  int elemType;
+  int arraySize;
+  int secDimSize;
   int* name;
   struct symbolTableEntry* entry;
   int fieldSize;
   int* recordName;
   struct symbolTableEntry* recordEntry;
+
+  elemType = 0;
+  arraySize = 0;
+  secDimSize = 0;
 
   // type identifier
   if (symbol == SYM_INT) {
@@ -2741,6 +2750,48 @@ struct symbolTableEntry* gr_field() {
       name = identifier;
 
       getSymbol();
+
+      fieldSize = getSizeOfType(type);
+
+      // type identifier [ integer ]
+      if (symbol == SYM_LBRACKET) {
+        elemType = type;
+        type = ARRAY_T;
+
+        getSymbol();
+
+        if (symbol == SYM_INTEGER) {
+          arraySize = literal;
+          secDimSize = 1;
+
+          getSymbol();
+
+          if (symbol == SYM_RBRACKET) {
+            getSymbol();
+
+            // type identifier [ integer ] [ integer ]
+            if (symbol == SYM_LBRACKET) {
+              getSymbol();
+
+              if (symbol == SYM_INTEGER) {
+                secDimSize = literal;
+                getSymbol();
+
+                if (symbol == SYM_RBRACKET)
+                  getSymbol();
+                else
+                  syntaxErrorSymbol(SYM_RBRACKET);
+              } else
+                syntaxErrorSymbol(SYM_INTEGER);
+            }
+
+            fieldSize = (getSizeOfType(elemType) * arraySize * secDimSize);
+
+          } else
+            syntaxErrorSymbol(SYM_RBRACKET);
+        } else
+          syntaxErrorSymbol(SYM_INTEGER);
+      }
 
       if (symbol == SYM_SEMICOLON) 
         getSymbol();
@@ -2782,11 +2833,11 @@ struct symbolTableEntry* gr_field() {
       syntaxErrorSymbol(SYM_IDENTIFIER);
 
     recordEntry = getSymbolTableEntry(recordName, RECORD);
+
+    fieldSize = getSizeOfType(type);
   }
 
-  fieldSize = getSizeOfType(type);
-
-  entry = createSymbolTableEntry(GLOBAL_TABLE, name, lineNumber, RECORD, type, 0, 0, 0, 0, 0, recordEntry, fieldSize, (struct symbolTableEntry*) 0);
+  entry = createSymbolTableEntry(GLOBAL_TABLE, name, lineNumber, RECORD, type, 0, 0, arraySize, elemType, secDimSize, recordEntry, fieldSize, (struct symbolTableEntry*) 0);
 
   return entry;
 }
@@ -2838,13 +2889,14 @@ int gr_record(int* recordName) {
   return RECORD_T;
 }
 
-int gr_fieldAccess(int* recordVariable) {
+int gr_fieldAccess(int* recordVariable, int* isValue) {
   struct symbolTableEntry* recordEntry;
   struct symbolTableEntry* variableEntry;
   int* fieldName;
   struct symbolTableEntry* fieldEntry;
   int offset;
   int fieldNotFound;
+  int type;
 
   fieldNotFound = 1;
 
@@ -2871,6 +2923,8 @@ int gr_fieldAccess(int* recordVariable) {
         fieldEntry = getNextField(fieldEntry);
     }
 
+    type = getType(fieldEntry);
+
     offset = getAddress(fieldEntry);
 
     load_variable(recordVariable);
@@ -2879,14 +2933,40 @@ int gr_fieldAccess(int* recordVariable) {
 
     emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), offset);
 
-    emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
+    // array access
+    if (symbol == SYM_LBRACKET) {
+      type = getElemType(fieldEntry);
 
+      getSymbol();
+
+      gr_selector(isValue, fieldEntry);
+
+      // two dimensional array
+      if (getSecDimSize(fieldEntry) > 1) {
+        multiplyRegisterWith(getSecDimSize(fieldEntry));
+
+        if (symbol == SYM_LBRACKET)
+          getSymbol();
+        else
+          syntaxErrorSymbol(SYM_LBRACKET);
+
+        gr_selector(isValue, fieldEntry);
+
+        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
+        tfree(1);
+      }
+
+      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
+      tfree(1);
+    }
+
+    emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
     tfree(1);
 
   } else
     syntaxErrorSymbol(SYM_IDENTIFIER);
 
-  return getType(fieldEntry);
+  return type;
 }
 
 void gr_selector(int* isValue, struct symbolTableEntry* entry) {
@@ -3112,7 +3192,7 @@ int gr_factor(int* isValue) {
     } else if (symbol == SYM_ARROW) {
       getSymbol();
 
-      type = gr_fieldAccess(variableOrProcedureName);
+      type = gr_fieldAccess(variableOrProcedureName, isValue);
       
       emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
 
@@ -3923,7 +4003,7 @@ void gr_statement(int* isValue) {
     } else if (symbol == SYM_ARROW) {
       getSymbol();
 
-      ltype = gr_fieldAccess(variableOrProcedureName);
+      ltype = gr_fieldAccess(variableOrProcedureName, isValue);
 
       if (symbol == SYM_ASSIGN) {
         getSymbol();
