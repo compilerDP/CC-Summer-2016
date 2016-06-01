@@ -2071,12 +2071,34 @@ int getSymbol() {
   } else if (character == CHAR_EXCLAMATION) {
     getCharacter();
 
-    if (character == CHAR_EQUAL)
+    if (character == CHAR_EQUAL) {
       getCharacter();
-    else
-      syntaxErrorCharacter(CHAR_EQUAL);
+      symbol = SYM_NOTEQ;
 
-    symbol = SYM_NOTEQ;
+    } else
+      symbol = SYM_NOT;
+
+  } else if (character == CHAR_AMPERSAND) {
+    getCharacter();
+
+    if (character == CHAR_AMPERSAND) 
+      getCharacter();
+
+    else
+      syntaxErrorCharacter(CHAR_AMPERSAND);
+
+    symbol = SYM_AND;
+
+  } else if (character == CHAR_PIPE) {
+    getCharacter();
+
+    if (character == CHAR_PIPE) 
+      getCharacter();
+
+    else
+      syntaxErrorCharacter(CHAR_PIPE);
+
+    symbol = SYM_OR;
 
   } else if (character == CHAR_PERCENTAGE) {
     getCharacter();
