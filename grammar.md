@@ -39,7 +39,7 @@ call             = identifier "(" [ expression { "," expression } ] ")" .
 literal          = integer | "'" ascii_character "'" .
 
 factor           = [ cast ] 
-                    ( [ "*" ] ( identifier | "(" expression ")" ) |
+                    ( [ "*" ] ( identifier | [ "!" ] "(" expression ")" ) |
                       fieldAccess |
                       array |
                       call |
