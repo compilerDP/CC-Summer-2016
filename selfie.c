@@ -564,6 +564,8 @@ int  getOperator(int* attribute);
 int* getFalseJumps(int* attribute);
 int* getTrueJumps(int* attribute);
 
+void initAttribute(int* attribute);
+
 void gr_selector(int* attribute, struct symbolTableEntry* entry);
 int  gr_call(int* procedure, int* attribute);
 struct symbolTableEntry* gr_field();
@@ -2724,6 +2726,14 @@ int negateOperatorSymbol(int operatorSymbol) {
     return operatorSymbol;
 }
 
+void initAttribute(int* attribute) {
+  resetIsConstant(attribute);
+  setNegation(attribute, 0);
+  setOperator(attribute, 0);
+  setFalseJumps(attribute, (int*) 0);
+  setTrueJumps(attribute, (int*) 0);
+}
+
 void resetIsConstant(int* attribute) {
   *attribute = 0;
   *(attribute + 1) = 0;
@@ -4572,9 +4582,8 @@ void gr_cstar() {
 
   arraySize = 0;
 
-  attribute = malloc(5 * SIZEOFINT);
-
-  resetIsConstant(attribute);
+  attribute = malloc(4 * SIZEOFINT + 2 * SIZEOFINTSTAR);
+  initAttribute(attribute);
 
   while (symbol != SYM_EOF) {
     while (lookForType()) {
