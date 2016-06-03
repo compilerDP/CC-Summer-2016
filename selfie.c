@@ -536,18 +536,33 @@ int  help_call_codegen(struct symbolTableEntry* entry, int* procedure);
 void help_procedure_prologue(int localVariables);
 void help_procedure_epilogue(int parameters);
 
+int  negateOperatorSymbol(int operatorSymbol);
+
 // attribute:
 // +----+----------------+
 // |  0 | isConstant     | 0 (value is not a constant), 1 (value is a constant)
 // |  1 | value          | constants integer value
-// |  2 | operator       | boolean operator
-// |  3 | false-jumps    | false jump list
-// |  4 | true-jumps     | true jump list
+// |  2 | negation       | 0 (no negation), 1 (negate expression)
+// |  3 | operator       | boolean operator
+// |  4 | false-jumps    | false jump list
+// |  5 | true-jumps     | true jump list
 // +----+----------------+
+
+// constant folding
 void resetIsConstant(int* attribute);
 void setIsConstant(int* attribute, int value);
 int  isConstant(int* attribute);
 int  getConstantValue(int* attribute);
+
+// boolean expression
+void setNegation(int* attribute, int negation);
+void setOperator(int* attribute, int operator);
+void setFalseJumps(int* attribute, int* falseJumps);
+void setTrueJumps(int* attribute, int* trueJumps);
+int  getNegation(int* attribute);
+int  getOperator(int* attribute);
+int* getFalseJumps(int* attribute);
+int* getTrueJumps(int* attribute);
 
 void gr_selector(int* attribute, struct symbolTableEntry* entry);
 int  gr_call(int* procedure, int* attribute);
@@ -2352,6 +2367,8 @@ int lookForFactor() {
     return 0;
   else if (symbol == SYM_STRING)
     return 0;
+  else if (symbol == SYM_NOT)
+    return 0;
   else if (symbol == SYM_EOF)
     return 0;
   else
@@ -2684,6 +2701,29 @@ void help_procedure_epilogue(int parameters) {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
 }
 
+int negateOperatorSymbol(int operatorSymbol) {
+  if (operatorSymbol == SYM_EQUALITY)
+    return SYM_NOTEQ;
+
+  else if (operatorSymbol == SYM_NOTEQ)
+    return SYM_EQUALITY;
+
+  else if (operatorSymbol == SYM_LT)
+    return SYM_GEQ;
+
+  else if (operatorSymbol == SYM_GT)
+    return SYM_LEQ;
+
+  else if (operatorSymbol == SYM_LEQ)
+    return SYM_GT;
+
+  else if (operatorSymbol == SYM_GEQ)
+    return SYM_LT;
+
+  else
+    return operatorSymbol;
+}
+
 void resetIsConstant(int* attribute) {
   *attribute = 0;
   *(attribute + 1) = 0;
@@ -2694,13 +2734,18 @@ void setIsConstant(int* attribute, int value) {
   *(attribute + 1) = value;
 }
 
-int isConstant(int* attribute) {
-  return *attribute;
-}
+int isConstant(int* attribute)       { return *attribute; }
+int getConstantValue(int* attribute) { return *(attribute + 1); }
 
-int getConstantValue(int* attribute) {
-  return *(attribute + 1);
-}
+void setNegation(int* attribute, int negation)      { *(attribute + 2) = negation; }
+void setOperator(int* attribute, int operator)      { *(attribute + 3) = operator; }
+void setFalseJumps(int* attribute, int* falseJumps) { *(attribute + 4) = (int) falseJumps; }
+void setTrueJumps(int* attribute, int* trueJumps)   { *(attribute + 5) = (int) trueJumps; }
+
+int  getNegation(int* attribute)   { return *(attribute + 2); }
+int  getOperator(int* attribute)   { return *(attribute + 3); }
+int* getFalseJumps(int* attribute) { return (int*) *(attribute + 4); }
+int* getTrueJumps(int* attribute)  { return (int*) *(attribute + 5); }
 
 int gr_call(int* procedure, int* attribute) {
   struct symbolTableEntry* entry;
@@ -3282,6 +3327,24 @@ int gr_factor(int* attribute) {
 
     type = INTSTAR_T;
 
+  //  "!" "(" expression ")"
+  } else if (symbol == SYM_NOT) {
+    setNegation(attribute, 1);
+
+    getSymbol();
+
+    if (symbol == SYM_LPARENTHESIS) {
+      getSymbol();
+
+      type = gr_expression(attribute);
+
+      if (symbol == SYM_RPARENTHESIS)
+        getSymbol();
+      else
+        syntaxErrorSymbol(SYM_RPARENTHESIS);
+    } else
+      syntaxErrorSymbol(SYM_RPARENTHESIS);
+
   //  "(" expression ")"
   } else if (symbol == SYM_LPARENTHESIS) {
     getSymbol();
@@ -3636,18 +3699,18 @@ int gr_logicalShift(int* attribute) {
         }
 
         if (useRegister == 1) {
-            // shift register
+          // shift register
         
-		    // assert: allocatedTemporaries == n + 2
+		      // assert: allocatedTemporaries == n + 2
 
-		    if (shiftSymbol == SYM_LLS) 
-		        emitRFormat(OP_SPECIAL, rightOperandRegister, leftOperandRegister, previousTemporary(), 0, FCT_SLLV);
+		      if (shiftSymbol == SYM_LLS) 
+		          emitRFormat(OP_SPECIAL, rightOperandRegister, leftOperandRegister, previousTemporary(), 0, FCT_SLLV);
 
-		    else if (shiftSymbol == SYM_LRS)
-		        emitRFormat(OP_SPECIAL, rightOperandRegister, leftOperandRegister, previousTemporary(), 0, FCT_SRLV);
+		      else if (shiftSymbol == SYM_LRS)
+		          emitRFormat(OP_SPECIAL, rightOperandRegister, leftOperandRegister, previousTemporary(), 0, FCT_SRLV);
 
-		    tfree(1);
-		}
+		      tfree(1);
+		    }
     }
 
     // assert: allocatedTemporaries == n + 1
@@ -3659,6 +3722,10 @@ int gr_expression(int* attribute) {
   int ltype;
   int operatorSymbol;
   int rtype;
+  int negation;
+
+  negation = getNegation(attribute);
+  setNegation(attribute, 0);
 
   // assert: n = allocatedTemporaries
 
@@ -3674,6 +3741,9 @@ int gr_expression(int* attribute) {
   //optional: ==, !=, <, >, <=, >= simpleExpression
   if (isComparison()) {
     operatorSymbol = symbol;
+
+    if (negation)
+      operatorSymbol = negateOperatorSymbol(operatorSymbol);
 
     getSymbol();
 
