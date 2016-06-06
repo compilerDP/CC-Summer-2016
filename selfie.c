@@ -3896,17 +3896,6 @@ int gr_boolExpression(struct attribute* infos) {
     setOperator(infos, symbol);
  
     getSymbol();
-
-    if (getOperator(infos) == SYM_AND) {
-      //setFalseJumps(infos, binaryLength);
-
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
-
-      tfree(1);
-
-      gr_expression(infos);
-    }
-
   }
     
   setOperator(infos, 0);
