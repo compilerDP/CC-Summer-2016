@@ -513,6 +513,7 @@ int isPlusOrMinus();
 int isLogicalShift();
 int isComparison();
 int isVariableDeclaration();
+int isBooleanOperator();
 
 int lookForFactor();
 int lookForStatement();
@@ -538,53 +539,94 @@ void help_procedure_epilogue(int parameters);
 
 int  negateOperatorSymbol(int operatorSymbol);
 
+// jump list:
+// +----+----------------+
+// |  0 | nextJumpEntry  | next jump entry
+// |  1 | value          | value
+// +----+----------------+
+struct jumpEntry {
+  struct jumpEntry* nextJumpEntry;
+  int value;
+};
+
+void resetJumps(struct jumpEntry* entry) {
+  entry = (struct jumpEntry*) 0;
+}
+
+struct jumpEntry* newJumpEntry(struct jumpEntry* lastEntry, int value) {
+  struct jumpEntry* entry;
+  entry = (struct jumpEntry*) malloc(SIZEOFRECORDSTAR + SIZEOFINT);
+  
+  entry->nextJumpEntry = lastEntry;
+  entry->value = value;
+
+  return entry;
+}
+
+struct jumpEntry* getNextJumpEntry(struct jumpEntry* entry) {
+  if (entry == (struct jumpEntry*) 0)
+    return entry;
+
+  return entry->nextJumpEntry;
+}
+
 // attribute:
 // +----+----------------+
 // |  0 | isConstant     | 0 (value is not a constant), 1 (value is a constant)
 // |  1 | value          | constants integer value
 // |  2 | negation       | 0 (no negation), 1 (negate expression)
 // |  3 | operator       | boolean operator
-// |  4 | false-jumps    | false jump list
-// |  5 | true-jumps     | true jump list
+// |  4 | falseJumps     | false jump list
+// |  5 | trueJumps      | true jump list
 // +----+----------------+
 
+struct attribute {
+  int isConstant;
+  int value;
+  int negation;
+  int operator;
+  struct jumpEntry* falseJumps;
+  struct jumpEntry* trueJumps;
+};
+
 // constant folding
-void resetIsConstant(int* attribute);
-void setIsConstant(int* attribute, int value);
-int  isConstant(int* attribute);
-int  getConstantValue(int* attribute);
+void resetIsConstant(struct attribute* infos);
+void setIsConstant(struct attribute* infos, int value);
+int  isConstant(struct attribute* infos);
+int  getConstantValue(struct attribute* infos);
 
 // boolean expression
-void setNegation(int* attribute, int negation);
-void setOperator(int* attribute, int operator);
-void setFalseJumps(int* attribute, int* falseJumps);
-void setTrueJumps(int* attribute, int* trueJumps);
-int  getNegation(int* attribute);
-int  getOperator(int* attribute);
-int* getFalseJumps(int* attribute);
-int* getTrueJumps(int* attribute);
+void setNegation(struct attribute* infos, int negation);
+void setOperator(struct attribute* infos, int operator);
+void addFalseJump(struct attribute* infos, int falseJumpValue);
+void addTrueJump(struct attribute* infos, int trueJumpValue);
+int  getNegation(struct attribute* infos);
+int  getOperator(struct attribute* infos);
+struct jumpEntry* getFalseJumps(struct attribute* infos);
+struct jumpEntry* getTrueJumps(struct attribute* infos);
 
-void initAttribute(int* attribute);
+void initInfos(struct attribute* infos);
 
-void gr_selector(int* attribute, struct symbolTableEntry* entry);
-int  gr_call(int* procedure, int* attribute);
+void gr_selector(struct attribute* infos, struct symbolTableEntry* entry);
+int  gr_call(int* procedure, struct attribute* infos);
 struct symbolTableEntry* gr_field();
 int  gr_record(int* recordName);
-int  gr_fieldAccess(int* recordVariable, int* attribute);
-int  gr_array(int* variable, int* attribute);
-int  gr_factor(int* attribute);
-int  gr_term(int* attribute);
-int  gr_simpleExpression(int* attribute);
-int  gr_logicalShift(int* attribute);
-int  gr_expression(int* attribute);
-void gr_while(int* attribute);
-void gr_if(int* attribute);
-void gr_return(int returnType, int* attribute);
-void gr_statement(int* attribute);
+int  gr_fieldAccess(int* recordVariable, struct attribute* infos);
+int  gr_array(int* variable, struct attribute* infos);
+int  gr_factor(struct attribute* infos);
+int  gr_term(struct attribute* infos);
+int  gr_simpleExpression(struct attribute* infos);
+int  gr_logicalShift(struct attribute* infos);
+int  gr_expression(struct attribute* infos);
+int  gr_boolExpression(struct attribute* infos);
+void gr_while(struct attribute* infos);
+void gr_if(struct attribute* infos);
+void gr_return(int returnType, struct attribute* infos);
+void gr_statement(struct attribute* infos);
 int  gr_type();
 void gr_variable(int offset, int* additionalMemorySpace);
 void gr_initialization(int* name, int offset, int type);
-void gr_procedure(int* procedure, int returnType, int* attribute);
+void gr_procedure(int* procedure, int returnType, struct attribute* infos);
 void gr_cstar();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -2356,6 +2398,15 @@ int isVariableDeclaration() {
     return 0;
 }
 
+int isBooleanOperator() {
+  if (symbol == SYM_AND)
+    return 1;
+  else if (symbol == SYM_OR)
+    return 1;
+  else
+    return 0;
+}
+
 int lookForFactor() {
   if (symbol == SYM_LPARENTHESIS)
     return 0;
@@ -2726,38 +2777,42 @@ int negateOperatorSymbol(int operatorSymbol) {
     return operatorSymbol;
 }
 
-void initAttribute(int* attribute) {
-  resetIsConstant(attribute);
-  setNegation(attribute, 0);
-  setOperator(attribute, 0);
-  setFalseJumps(attribute, (int*) 0);
-  setTrueJumps(attribute, (int*) 0);
+void initInfos(struct attribute* infos) {
+  resetIsConstant(infos);
+  setNegation(infos, 0);
+  setOperator(infos, 0);
+  resetJumps(infos->falseJumps);
+  resetJumps(infos->trueJumps);
 }
 
-void resetIsConstant(int* attribute) {
-  *attribute = 0;
-  *(attribute + 1) = 0;
+void resetIsConstant(struct attribute* infos) {
+  infos->isConstant = 0;
+  infos->value = 0;
 }
 
-void setIsConstant(int* attribute, int value) {
-  *attribute = 1;
-  *(attribute + 1) = value;
+void setIsConstant(struct attribute* infos, int value) {
+  infos->isConstant = 1;
+  infos->value = value;
 }
 
-int isConstant(int* attribute)       { return *attribute; }
-int getConstantValue(int* attribute) { return *(attribute + 1); }
+int isConstant(struct attribute* infos)       { return infos->isConstant; }
+int getConstantValue(struct attribute* infos) { return infos->value; }
 
-void setNegation(int* attribute, int negation)      { *(attribute + 2) = negation; }
-void setOperator(int* attribute, int operator)      { *(attribute + 3) = operator; }
-void setFalseJumps(int* attribute, int* falseJumps) { *(attribute + 4) = (int) falseJumps; }
-void setTrueJumps(int* attribute, int* trueJumps)   { *(attribute + 5) = (int) trueJumps; }
+void setNegation(struct attribute* infos, int negation)      { infos->negation = negation; }
+void setOperator(struct attribute* infos, int operator)      { infos->operator = operator; }
+void addFalseJump(struct attribute* infos, int falseJumpValue) { 
+  infos->falseJumps = newJumpEntry(infos->falseJumps, falseJumpValue); 
+}
+void addTrueJump(struct attribute* infos, int trueJumpValue) {
+  infos->trueJumps = newJumpEntry(infos->trueJumps, trueJumpValue); 
+}
 
-int  getNegation(int* attribute)   { return *(attribute + 2); }
-int  getOperator(int* attribute)   { return *(attribute + 3); }
-int* getFalseJumps(int* attribute) { return (int*) *(attribute + 4); }
-int* getTrueJumps(int* attribute)  { return (int*) *(attribute + 5); }
+int  getNegation(struct attribute* infos)                { return infos->negation; }
+int  getOperator(struct attribute* infos)                { return infos->operator; }
+struct jumpEntry* getFalseJumps(struct attribute* infos) { return infos->falseJumps; }
+struct jumpEntry* getTrueJumps(struct attribute* infos)  { return infos->trueJumps; }
 
-int gr_call(int* procedure, int* attribute) {
+int gr_call(int* procedure, struct attribute* infos) {
   struct symbolTableEntry* entry;
   int numberOfTemporaries;
   int type;
@@ -2777,7 +2832,7 @@ int gr_call(int* procedure, int* attribute) {
   // assert: allocatedTemporaries == 0
 
   if (isExpression()) {
-    type = gr_expression(attribute);
+    type = gr_boolExpression(infos);
 
     // TODO: check if types/number of parameters is correct
 
@@ -2791,7 +2846,7 @@ int gr_call(int* procedure, int* attribute) {
     while (symbol == SYM_COMMA) {
       getSymbol();
 
-      type = gr_expression(attribute);
+      type = gr_boolExpression(infos);
 
       // push more parameters onto stack
       emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
@@ -2998,7 +3053,7 @@ int gr_record(int* recordName) {
   return RECORD_T;
 }
 
-int gr_fieldAccess(int* recordVariable, int* attribute) {
+int gr_fieldAccess(int* recordVariable, struct attribute* infos) {
   struct symbolTableEntry* recordEntry;
   struct symbolTableEntry* variableEntry;
   int* fieldName;
@@ -3048,7 +3103,7 @@ int gr_fieldAccess(int* recordVariable, int* attribute) {
 
       getSymbol();
 
-      gr_selector(attribute, fieldEntry);
+      gr_selector(infos, fieldEntry);
 
       // two dimensional array
       if (getSecDimSize(fieldEntry) > 1) {
@@ -3059,7 +3114,7 @@ int gr_fieldAccess(int* recordVariable, int* attribute) {
         else
           syntaxErrorSymbol(SYM_LBRACKET);
 
-        gr_selector(attribute, fieldEntry);
+        gr_selector(infos, fieldEntry);
 
         emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
         tfree(1);
@@ -3078,23 +3133,23 @@ int gr_fieldAccess(int* recordVariable, int* attribute) {
   return type;
 }
 
-void gr_selector(int* attribute, struct symbolTableEntry* entry) {
+void gr_selector(struct attribute* infos, struct symbolTableEntry* entry) {
   int indexType;
   int arrayIndex;
 
   arrayIndex = 0;
 
-  indexType = gr_logicalShift(attribute); 
+  indexType = gr_logicalShift(infos); 
 
   if (indexType != INT_T)
     typeWarning(INT_T, indexType);
 
   // index is a constant
-  if (isConstant(attribute)) {
+  if (isConstant(infos)) {
 
-    arrayIndex = getConstantValue(attribute);
+    arrayIndex = getConstantValue(infos);
 
-    resetIsConstant(attribute);
+    resetIsConstant(infos);
 
     if (arrayIndex < 0)
       syntaxErrorMessage((int*) "array index out of bound");
@@ -3117,7 +3172,7 @@ void gr_selector(int* attribute, struct symbolTableEntry* entry) {
     syntaxErrorSymbol(SYM_RBRACKET);
 }
 
-int gr_array(int* variable, int* attribute) {
+int gr_array(int* variable, struct attribute* infos) {
   struct symbolTableEntry* entry;
 
   entry = getVariable(variable);
@@ -3134,7 +3189,7 @@ int gr_array(int* variable, int* attribute) {
   else
     emitIFormat(OP_ADDIU, getScope(entry), currentTemporary(), getAddress(entry));
 
-  gr_selector(attribute, entry);
+  gr_selector(infos, entry);
 
   // two dimensional array
   if (getSecDimSize(entry) > 1) {
@@ -3145,7 +3200,7 @@ int gr_array(int* variable, int* attribute) {
     else
       syntaxErrorSymbol(SYM_LBRACKET);
 
-    gr_selector(attribute, entry);
+    gr_selector(infos, entry);
 
     emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), 0, FCT_ADDU);
 
@@ -3160,7 +3215,7 @@ int gr_array(int* variable, int* attribute) {
   return getElemType(entry);
 }
 
-int gr_factor(int* attribute) {
+int gr_factor(struct attribute* infos) {
   int hasCast;
   int cast;
   int type;
@@ -3172,7 +3227,7 @@ int gr_factor(int* attribute) {
   hasCast = 0;
 
   // reset constant folding attribute
-  resetIsConstant(attribute);
+  resetIsConstant(infos);
 
   type = INT_T;
 
@@ -3225,7 +3280,7 @@ int gr_factor(int* attribute) {
 
     // not a cast: "(" expression ")"
     } else {
-      type = gr_expression(attribute);
+      type = gr_boolExpression(infos);
 
       if (symbol == SYM_RPARENTHESIS)
         getSymbol();
@@ -3252,7 +3307,7 @@ int gr_factor(int* attribute) {
     } else if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      type = gr_expression(attribute);
+      type = gr_boolExpression(infos);
 
       if (symbol == SYM_RPARENTHESIS)
         getSymbol();
@@ -3279,7 +3334,7 @@ int gr_factor(int* attribute) {
       getSymbol();
 
       // function call: identifier "(" ... ")"
-      type = gr_call(variableOrProcedureName, attribute);
+      type = gr_call(variableOrProcedureName, infos);
 
       talloc();
 
@@ -3293,7 +3348,7 @@ int gr_factor(int* attribute) {
     } else if (symbol == SYM_LBRACKET) {
       getSymbol();
 
-      type = gr_array(variableOrProcedureName, attribute);
+      type = gr_array(variableOrProcedureName, infos);
       
       emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
 
@@ -3301,7 +3356,7 @@ int gr_factor(int* attribute) {
     } else if (symbol == SYM_ARROW) {
       getSymbol();
 
-      type = gr_fieldAccess(variableOrProcedureName, attribute);
+      type = gr_fieldAccess(variableOrProcedureName, infos);
       
       emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
 
@@ -3312,8 +3367,8 @@ int gr_factor(int* attribute) {
   // integer?
   } else if (symbol == SYM_INTEGER) {
 
-    // set attribute for constant folding
-    setIsConstant(attribute, literal);
+    // set infos for constant folding
+    setIsConstant(infos, literal);
 
     getSymbol();
 
@@ -3339,14 +3394,14 @@ int gr_factor(int* attribute) {
 
   //  "!" "(" expression ")"
   } else if (symbol == SYM_NOT) {
-    setNegation(attribute, 1);
+    setNegation(infos, 1);
 
     getSymbol();
 
     if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      type = gr_expression(attribute);
+      type = gr_boolExpression(infos);
 
       if (symbol == SYM_RPARENTHESIS)
         getSymbol();
@@ -3359,7 +3414,7 @@ int gr_factor(int* attribute) {
   } else if (symbol == SYM_LPARENTHESIS) {
     getSymbol();
 
-    type = gr_expression(attribute);
+    type = gr_boolExpression(infos);
 
     if (symbol == SYM_RPARENTHESIS)
       getSymbol();
@@ -3376,7 +3431,7 @@ int gr_factor(int* attribute) {
     return type;
 }
 
-int gr_term(int* attribute) {
+int gr_term(struct attribute* infos) {
   int ltype;
   int lIsValue;
   int lValue;
@@ -3391,11 +3446,11 @@ int gr_term(int* attribute) {
 
   // assert: n = allocatedTemporaries
 
-  ltype = gr_factor(attribute);   
+  ltype = gr_factor(infos);   
  
-  if (isConstant(attribute)) {
+  if (isConstant(infos)) {
     lIsValue = 1;
-    lValue = getConstantValue(attribute);
+    lValue = getConstantValue(infos);
   }
 
   // * / or % ?
@@ -3408,21 +3463,21 @@ int gr_term(int* attribute) {
     leftOperandRegister = 0;
     rightOperandRegister = 0;
 
-    rtype = gr_factor(attribute);
+    rtype = gr_factor(infos);
 
-    if (isConstant(attribute)) {
+    if (isConstant(infos)) {
 
         // left side and right side are constants
         if (lIsValue == 1) {
 
             useRegister = 0;
-            rValue = getConstantValue(attribute);
+            rValue = getConstantValue(infos);
 
         // only right side is constant
         } else {
 
-            load_integer_after_check(getConstantValue(attribute));   // load right value into register
-            resetIsConstant(attribute);
+            load_integer_after_check(getConstantValue(infos));   // load right value into register
+            resetIsConstant(infos);
 
             leftOperandRegister = previousTemporary();
             rightOperandRegister = currentTemporary();
@@ -3432,7 +3487,7 @@ int gr_term(int* attribute) {
     } else if (lIsValue == 1) {
 
         load_integer_after_check(lValue);   // load left value into register
-        resetIsConstant(attribute);
+        resetIsConstant(infos);
 
         lIsValue = 0;
         leftOperandRegister = currentTemporary();
@@ -3456,7 +3511,7 @@ int gr_term(int* attribute) {
        else if (operatorSymbol == SYM_MOD) 
           lValue = lValue % rValue;  
 
-       setIsConstant(attribute, lValue);
+       setIsConstant(infos, lValue);
 
     } else {
 
@@ -3485,7 +3540,7 @@ int gr_term(int* attribute) {
   return ltype;
 }
 
-int gr_simpleExpression(int* attribute) {
+int gr_simpleExpression(struct attribute* infos) {
     int sign;
     int ltype;
     int lIsValue;
@@ -3522,11 +3577,11 @@ int gr_simpleExpression(int* attribute) {
     } else
         sign = 0;
 
-    ltype = gr_term(attribute);
+    ltype = gr_term(infos);
 
-    if (isConstant(attribute)) {
+    if (isConstant(infos)) {
         lIsValue = 1;
-        lValue = getConstantValue(attribute);
+        lValue = getConstantValue(infos);
     }
 
     if (sign) {
@@ -3541,7 +3596,7 @@ int gr_simpleExpression(int* attribute) {
             emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), 0, FCT_SUBU);
         else {
             lValue = -lValue;
-            setIsConstant(attribute, lValue);
+            setIsConstant(infos, lValue);
         }
     }
 
@@ -3555,21 +3610,21 @@ int gr_simpleExpression(int* attribute) {
         leftOperandRegister = 0;
         rightOperandRegister = 0;
 
-        rtype = gr_term(attribute);
+        rtype = gr_term(infos);
 
-        if (isConstant(attribute)) {
+        if (isConstant(infos)) {
 
             // left side and right side are constants
             if (lIsValue == 1) {
 
                 useRegister = 0;
-                rValue = getConstantValue(attribute);
+                rValue = getConstantValue(infos);
 
             // only right side is constant
             } else {
 
-                load_integer_after_check(getConstantValue(attribute));   // load right value into register
-                resetIsConstant(attribute);
+                load_integer_after_check(getConstantValue(infos));   // load right value into register
+                resetIsConstant(infos);
                 leftOperandRegister = previousTemporary();
                 rightOperandRegister = currentTemporary();
             }
@@ -3578,7 +3633,7 @@ int gr_simpleExpression(int* attribute) {
         } else if (lIsValue == 1) {
 
             load_integer_after_check(lValue);   // load left value into register
-            resetIsConstant(attribute);
+            resetIsConstant(infos);
             lIsValue = 0;
             leftOperandRegister = currentTemporary();
             rightOperandRegister = previousTemporary();
@@ -3598,7 +3653,7 @@ int gr_simpleExpression(int* attribute) {
             else if (operatorSymbol == SYM_MINUS)
                 lValue = lValue - rValue;
 
-           setIsConstant(attribute, lValue);
+           setIsConstant(infos, lValue);
 
         } else {
 
@@ -3628,7 +3683,7 @@ int gr_simpleExpression(int* attribute) {
     return ltype;
 }
 
-int gr_logicalShift(int* attribute) {
+int gr_logicalShift(struct attribute* infos) {
     int ltype;
     int lIsValue;
     int lValue;
@@ -3642,11 +3697,11 @@ int gr_logicalShift(int* attribute) {
 
     // assert: n = allocatedTemporaries
 
-    ltype = gr_simpleExpression(attribute);
+    ltype = gr_simpleExpression(infos);
 
-    if (isConstant(attribute)) {
+    if (isConstant(infos)) {
       lIsValue = 1;
-      lValue = getConstantValue(attribute);
+      lValue = getConstantValue(infos);
     }
 
 	// assert: allocatedTemporaries == n + 1
@@ -3661,15 +3716,15 @@ int gr_logicalShift(int* attribute) {
         leftOperandRegister = 0;
         rightOperandRegister = 0;
 
-        gr_simpleExpression(attribute);
+        gr_simpleExpression(infos);
 
-        if (isConstant(attribute)) {
+        if (isConstant(infos)) {
 
             // left side and right side are constants
             if (lIsValue == 1) {
 
                 useRegister = 0;
-                rValue = getConstantValue(attribute);
+                rValue = getConstantValue(infos);
 
                 if (shiftSymbol == SYM_LLS)
                     lValue = lValue << rValue;
@@ -3677,26 +3732,26 @@ int gr_logicalShift(int* attribute) {
                 else if (shiftSymbol == SYM_LRS)
                     lValue = lValue >> rValue;
 
-               setIsConstant(attribute, lValue);
+               setIsConstant(infos, lValue);
 
             // only right side is constant
             } else {
 
                 // shift immediate
 		        if (shiftSymbol == SYM_LLS) 
-				    emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), getConstantValue(attribute), FCT_SLL);
+				    emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), getConstantValue(infos), FCT_SLL);
 			    else if (shiftSymbol == SYM_LRS)
-				    emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), getConstantValue(attribute), FCT_SRL);
+				    emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), getConstantValue(infos), FCT_SRL);
 
                 useRegister = 0;
-                resetIsConstant(attribute);
+                resetIsConstant(infos);
             }
 
         // only left side is constant
         } else if (lIsValue == 1) {
 
             load_integer_after_check(lValue);   // load left value into register
-            resetIsConstant(attribute);
+            resetIsConstant(infos);
             lIsValue = 0;
             leftOperandRegister = currentTemporary();
             rightOperandRegister = previousTemporary();
@@ -3728,22 +3783,22 @@ int gr_logicalShift(int* attribute) {
     return ltype;
 }
 
-int gr_expression(int* attribute) {
+int gr_expression(struct attribute* infos) {
   int ltype;
   int operatorSymbol;
   int rtype;
   int negation;
 
-  negation = getNegation(attribute);
-  setNegation(attribute, 0);
+  negation = getNegation(infos);
+  setNegation(infos, 0);
 
   // assert: n = allocatedTemporaries
 
-  ltype = gr_logicalShift(attribute);
+  ltype = gr_logicalShift(infos);
 
-  if (isConstant(attribute)) {
-    load_integer_after_check(getConstantValue(attribute));
-    resetIsConstant(attribute);
+  if (isConstant(infos)) {
+    load_integer_after_check(getConstantValue(infos));
+    resetIsConstant(infos);
   }
 
   // assert: allocatedTemporaries == n + 1
@@ -3757,11 +3812,11 @@ int gr_expression(int* attribute) {
 
     getSymbol();
 
-    rtype = gr_logicalShift(attribute);
+    rtype = gr_logicalShift(infos);
 
-    if (isConstant(attribute)) {
-      load_integer_after_check(getConstantValue(attribute));
-      resetIsConstant(attribute);
+    if (isConstant(infos)) {
+      load_integer_after_check(getConstantValue(infos));
+      resetIsConstant(infos);
     }
 
     // assert: allocatedTemporaries == n + 2
@@ -3832,7 +3887,34 @@ int gr_expression(int* attribute) {
   return ltype;
 }
 
-void gr_while(int* attribute) {
+int gr_boolExpression(struct attribute* infos) {
+  int ltype;
+
+  ltype = gr_expression(infos);
+
+  if (isBooleanOperator()) {
+    setOperator(infos, symbol);
+ 
+    getSymbol();
+
+    if (getOperator(infos) == SYM_AND) {
+      //setFalseJumps(infos, binaryLength);
+
+      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
+
+      tfree(1);
+
+      gr_expression(infos);
+    }
+
+  }
+    
+  setOperator(infos, 0);
+
+  return ltype;
+}
+
+void gr_while(struct attribute* infos) {
   int brBackToWhile;
   int brForwardToEnd;
 
@@ -3849,7 +3931,7 @@ void gr_while(int* attribute) {
     if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      gr_expression(attribute);
+      gr_boolExpression(infos);
 
       // do not know where to branch, fixup later
       brForwardToEnd = binaryLength;
@@ -3866,7 +3948,7 @@ void gr_while(int* attribute) {
           getSymbol();
 
           while (isNotRbraceOrEOF())
-            gr_statement(attribute);
+            gr_statement(infos);
 
           if (symbol == SYM_RBRACE)
             getSymbol();
@@ -3878,7 +3960,7 @@ void gr_while(int* attribute) {
         }
         // only one statement without {}
         else
-          gr_statement(attribute);
+          gr_statement(infos);
       } else
         syntaxErrorSymbol(SYM_RPARENTHESIS);
     } else
@@ -3897,7 +3979,7 @@ void gr_while(int* attribute) {
   // assert: allocatedTemporaries == 0
 }
 
-void gr_if(int* attribute) {
+void gr_if(struct attribute* infos) {
   int brForwardToElseOrEnd;
   int brForwardToEnd;
 
@@ -3910,7 +3992,7 @@ void gr_if(int* attribute) {
     if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      gr_expression(attribute);
+      gr_boolExpression(infos);
 
       // if the "if" case is not true, we jump to "else" (if provided)
       brForwardToElseOrEnd = binaryLength;
@@ -3927,7 +4009,7 @@ void gr_if(int* attribute) {
           getSymbol();
 
           while (isNotRbraceOrEOF())
-            gr_statement(attribute);
+            gr_statement(infos);
 
           if (symbol == SYM_RBRACE)
             getSymbol();
@@ -3939,7 +4021,7 @@ void gr_if(int* attribute) {
         }
         // only one statement without {}
         else
-          gr_statement(attribute);
+          gr_statement(infos);
 
         //optional: else
         if (symbol == SYM_ELSE) {
@@ -3957,7 +4039,7 @@ void gr_if(int* attribute) {
             getSymbol();
 
             while (isNotRbraceOrEOF())
-              gr_statement(attribute);
+              gr_statement(infos);
 
             if (symbol == SYM_RBRACE)
               getSymbol();
@@ -3969,7 +4051,7 @@ void gr_if(int* attribute) {
 
           // only one statement without {}
           } else
-            gr_statement(attribute);
+            gr_statement(infos);
 
           // if the "if" case was true, we jump here
           fixup_relative(brForwardToEnd);
@@ -3986,7 +4068,7 @@ void gr_if(int* attribute) {
   // assert: allocatedTemporaries == 0
 }
 
-void gr_return(int returnType, int* attribute) {
+void gr_return(int returnType, struct attribute* infos) {
   int type;
 
   // assert: allocatedTemporaries == 0
@@ -3998,7 +4080,7 @@ void gr_return(int returnType, int* attribute) {
 
   // optional: expression
   if (symbol != SYM_SEMICOLON) {
-    type = gr_expression(attribute);
+    type = gr_boolExpression(infos);
 
     if (returnType == VOID_T)
       typeWarning(type, returnType);
@@ -4022,7 +4104,7 @@ void gr_return(int returnType, int* attribute) {
   // assert: allocatedTemporaries == 0
 }
 
-void gr_statement(int* attribute) {
+void gr_statement(struct attribute* infos) {
   int ltype;
   int rtype;
   int* variableOrProcedureName;
@@ -4056,7 +4138,7 @@ void gr_statement(int* attribute) {
       if (symbol == SYM_ASSIGN) {
         getSymbol();
 
-        rtype = gr_expression(attribute);
+        rtype = gr_boolExpression(infos);
 
         if (rtype != INT_T)
           typeWarning(INT_T, rtype);
@@ -4076,7 +4158,7 @@ void gr_statement(int* attribute) {
     } else if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      ltype = gr_expression(attribute);
+      ltype = gr_boolExpression(infos);
 
       if (ltype != INTSTAR_T)
         typeWarning(INTSTAR_T, ltype);
@@ -4088,7 +4170,7 @@ void gr_statement(int* attribute) {
         if (symbol == SYM_ASSIGN) {
           getSymbol();
 
-          rtype = gr_expression(attribute);
+          rtype = gr_boolExpression(infos);
 
           if (rtype != INT_T)
             typeWarning(INT_T, rtype);
@@ -4119,7 +4201,7 @@ void gr_statement(int* attribute) {
     if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      gr_call(variableOrProcedureName, attribute);
+      gr_call(variableOrProcedureName, infos);
 
       // reset return register
       emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
@@ -4133,12 +4215,12 @@ void gr_statement(int* attribute) {
     } else if (symbol == SYM_ARROW) {
       getSymbol();
 
-      ltype = gr_fieldAccess(variableOrProcedureName, attribute);
+      ltype = gr_fieldAccess(variableOrProcedureName, infos);
 
       if (symbol == SYM_ASSIGN) {
         getSymbol();
 
-        rtype = gr_expression(attribute);
+        rtype = gr_boolExpression(infos);
 
         if (ltype != rtype)
           typeWarning(ltype, rtype);
@@ -4158,12 +4240,12 @@ void gr_statement(int* attribute) {
     } else if (symbol == SYM_LBRACKET) {
       getSymbol();
 
-      ltype = gr_array(variableOrProcedureName, attribute);
+      ltype = gr_array(variableOrProcedureName, infos);
 
       if (symbol == SYM_ASSIGN) {
         getSymbol();
 
-        rtype = gr_expression(attribute);
+        rtype = gr_boolExpression(infos);
 
         if (ltype != rtype)
           typeWarning(ltype, rtype);
@@ -4187,7 +4269,7 @@ void gr_statement(int* attribute) {
 
       getSymbol();
 
-      rtype = gr_expression(attribute);
+      rtype = gr_boolExpression(infos);
 
       if (ltype != rtype) {
 
@@ -4214,17 +4296,17 @@ void gr_statement(int* attribute) {
   }
   // while statement?
   else if (symbol == SYM_WHILE) {
-    gr_while(attribute);
+    gr_while(infos);
   }
   // if statement?
   else if (symbol == SYM_IF) {
-    gr_if(attribute);
+    gr_if(infos);
   }
   // return statement?
   else if (symbol == SYM_RETURN) {
     entry = getSymbolTableEntry(currentProcedureName, PROCEDURE);
 
-    gr_return(getType(entry), attribute);
+    gr_return(getType(entry), infos);
 
     if (symbol == SYM_SEMICOLON)
       getSymbol();
@@ -4433,7 +4515,7 @@ void gr_initialization(int* name, int offset, int type) {
   createSymbolTableEntry(GLOBAL_TABLE, name, actualLineNumber, VARIABLE, type, initialValue, offset, 0, 0, 0, (struct symbolTableEntry*) 0, 0, (struct symbolTableEntry*) 0);
 }
 
-void gr_procedure(int* procedure, int returnType, int* attribute) {
+void gr_procedure(int* procedure, int returnType, struct attribute* infos) {
   int numberOfParameters;
   int parameters;
   int localVariables;
@@ -4547,7 +4629,7 @@ void gr_procedure(int* procedure, int returnType, int* attribute) {
     returnBranches = 0;
 
     while (isNotRbraceOrEOF())
-      gr_statement(attribute);
+      gr_statement(infos);
 
     if (symbol == SYM_RBRACE)
       getSymbol();
@@ -4576,14 +4658,14 @@ void gr_cstar() {
   int arraySize;
   int secDimSize;
   int* variableOrProcedureName;
-  int* attribute;
+  struct attribute* infos;
   int* recordName;
   struct symbolTableEntry* recordEntry;
 
   arraySize = 0;
 
-  attribute = malloc(4 * SIZEOFINT + 2 * SIZEOFINTSTAR);
-  initAttribute(attribute);
+  infos = (struct attribute*) malloc(4 * SIZEOFINT + 2 * SIZEOFRECORDSTAR);
+  initInfos(infos);
 
   while (symbol != SYM_EOF) {
     while (lookForType()) {
@@ -4606,7 +4688,7 @@ void gr_cstar() {
 
         getSymbol();
 
-        gr_procedure(variableOrProcedureName, type, attribute);
+        gr_procedure(variableOrProcedureName, type, infos);
       } else
         syntaxErrorSymbol(SYM_IDENTIFIER);
 
@@ -4650,7 +4732,7 @@ void gr_cstar() {
             } else if (symbol == SYM_LPARENTHESIS) {
               type = RECORD_T;
 
-              gr_procedure(variableOrProcedureName, type, attribute);
+              gr_procedure(variableOrProcedureName, type, infos);
 
             } else
               syntaxErrorSymbol(SYM_SEMICOLON);
@@ -4672,7 +4754,7 @@ void gr_cstar() {
 
         // type identifier "(" procedure declaration or definition
         if (symbol == SYM_LPARENTHESIS)
-          gr_procedure(variableOrProcedureName, type, attribute);
+          gr_procedure(variableOrProcedureName, type, infos);
 
         // type identifier "[" integer "]" 
         else if (symbol == SYM_LBRACKET) {
