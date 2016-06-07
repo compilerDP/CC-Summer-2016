@@ -34,12 +34,13 @@ selector         = "[" logicalShift "]" .
 
 array            = identifier selector [ selector ] .
 
-call             = identifier "(" [ expression { "," expression } ] ")" .
+call             = identifier "(" [ boolExpression { "," boolExpression } ] ")" .
 
 literal          = integer | "'" ascii_character "'" .
 
 factor           = [ cast ] 
-                    ( [ "*" ] ( identifier | [ "!" ] "(" expression ")" ) |
+                    ( [ "*" ] ( identifier | "(" boolExpression ")" ) |
+                      [ "!" ] "(" boolExpression ")" |
                       fieldAccess |
                       array |
                       call |
@@ -54,21 +55,23 @@ logicalShift     = simpleExpression { ( "<<" | ">>" ) simpleExpression } .
 
 expression       = logicalShift [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) logicalShift ] .
 
-while            = "while" "(" expression ")" 
+boolExpression   = expression { ( "&&" | "||" ) expression } .
+
+while            = "while" "(" boolExpression ")" 
                              ( statement |
                                "{" { statement } "}" ) .
 
-if               = "if" "(" expression ")" 
+if               = "if" "(" boolExpression ")" 
                              ( statement | 
                                "{" { statement } "}" ) 
                          [ "else"
                              ( statement |
                                "{" { statement } "}" ) ] .
 
-return           = "return" [ expression ] .
+return           = "return" [ boolExpression ] .
 
-statement        = ( [ "*" ] identifier | fieldAccess | array | "*" "(" expression ")" ) "="
-                      expression ";" |
+statement        = ( [ "*" ] identifier | fieldAccess | array | "*" "(" boolExpression ")" ) "="
+                      boolExpression ";" |
                     call ";" | 
                     while | 
                     if | 
