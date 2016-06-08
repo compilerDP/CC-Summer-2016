@@ -3366,7 +3366,7 @@ int gr_factor(struct attribute* infos) {
         syntaxErrorSymbol(SYM_RPARENTHESIS);
 
     } else
-      type = gr_boolExpression(infos);
+      syntaxErrorSymbol(SYM_LPARENTHESIS);
 
     emitNegation();
 

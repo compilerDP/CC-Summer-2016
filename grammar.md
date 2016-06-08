@@ -23,7 +23,7 @@ type             = "int" [ "*" ] .
 
 cast             = "(" type ")" .
 
-negation         = [ "!" ] "(" boolExpression ")" .
+negation         = "!" "(" boolExpression ")" .
 
 field            = ( type identifier [ "[" integer "]" [ "[" integer "]" ] ] |
                    "struct" identifier "*" identifier ) ";" .
