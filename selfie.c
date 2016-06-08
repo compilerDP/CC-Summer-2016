@@ -575,16 +575,14 @@ struct jumpEntry* getNextJumpEntry(struct jumpEntry* entry) {
 // |  0 | isConstant     | 0 (value is not a constant), 1 (value is a constant)
 // |  1 | value          | constants integer value
 // |  2 | negation       | 0 (no negation), 1 (negate expression)
-// |  3 | operator       | boolean operator
-// |  4 | falseJumps     | false jump list
-// |  5 | trueJumps      | true jump list
+// |  3 | falseJumps     | false jump list
+// |  4 | trueJumps      | true jump list
 // +----+----------------+
 
 struct attribute {
   int isConstant;
   int value;
   int negation;
-  int operator;
   struct jumpEntry* falseJumps;
   struct jumpEntry* trueJumps;
 };
@@ -597,11 +595,9 @@ int  getConstantValue(struct attribute* infos);
 
 // boolean expression
 void setNegation(struct attribute* infos, int negation);
-void setOperator(struct attribute* infos, int operator);
 void addFalseJump(struct attribute* infos, int falseJumpValue);
 void addTrueJump(struct attribute* infos, int trueJumpValue);
 int  getNegation(struct attribute* infos);
-int  getOperator(struct attribute* infos);
 struct jumpEntry* getFalseJumps(struct attribute* infos);
 struct jumpEntry* getTrueJumps(struct attribute* infos);
 
@@ -2780,7 +2776,6 @@ int negateOperatorSymbol(int operatorSymbol) {
 void initInfos(struct attribute* infos) {
   resetIsConstant(infos);
   setNegation(infos, 0);
-  setOperator(infos, 0);
   resetJumps(infos->falseJumps);
   resetJumps(infos->trueJumps);
 }
@@ -2799,7 +2794,6 @@ int isConstant(struct attribute* infos)       { return infos->isConstant; }
 int getConstantValue(struct attribute* infos) { return infos->value; }
 
 void setNegation(struct attribute* infos, int negation)      { infos->negation = negation; }
-void setOperator(struct attribute* infos, int operator)      { infos->operator = operator; }
 void addFalseJump(struct attribute* infos, int falseJumpValue) { 
   infos->falseJumps = newJumpEntry(infos->falseJumps, falseJumpValue); 
 }
@@ -2808,7 +2802,6 @@ void addTrueJump(struct attribute* infos, int trueJumpValue) {
 }
 
 int  getNegation(struct attribute* infos)                { return infos->negation; }
-int  getOperator(struct attribute* infos)                { return infos->operator; }
 struct jumpEntry* getFalseJumps(struct attribute* infos) { return infos->falseJumps; }
 struct jumpEntry* getTrueJumps(struct attribute* infos)  { return infos->trueJumps; }
 
@@ -3889,6 +3882,7 @@ int gr_expression(struct attribute* infos) {
 
 int gr_boolExpression(struct attribute* infos) {
   int ltype;
+  int operator;
   int brForwardToNextExpression;
   int doFixup;
   struct jumpEntry* entry;
@@ -3897,15 +3891,15 @@ int gr_boolExpression(struct attribute* infos) {
 
   ltype = gr_expression(infos);
 
-  if (isBooleanOperator()) {
+  while (isBooleanOperator()) {
 
     doFixup = 1;
 
-    setOperator(infos, symbol);
+    operator = symbol;
  
     getSymbol();
 
-    if (getOperator(infos) == SYM_AND) {
+    if (operator == SYM_AND) {
 
       addFalseJump(infos, binaryLength);
       emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
@@ -3920,7 +3914,7 @@ int gr_boolExpression(struct attribute* infos) {
       gr_expression(infos);
     }
 
-    else if (getOperator(infos) == SYM_OR) {
+    else if (operator == SYM_OR) {
 
       addTrueJump(infos, binaryLength);
       emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 0);
@@ -3938,19 +3932,17 @@ int gr_boolExpression(struct attribute* infos) {
 
   if (doFixup) {
 
-//    if (getOperator(infos) == SYM_AND)
+    if (operator == SYM_AND)
       entry = getFalseJumps(infos);
 
-//    else
-//      entry = getTrueJumps(infos);
+    else
+      entry = getTrueJumps(infos);
 
     while (entry != (struct jumpEntry*) 0) {
       fixup_relative(entry->value);
       entry = entry->nextJumpEntry;
     }    
   }
-
-  setOperator(infos, 0);
 
   return ltype;
 }
