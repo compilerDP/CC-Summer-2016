@@ -3889,15 +3889,67 @@ int gr_expression(struct attribute* infos) {
 
 int gr_boolExpression(struct attribute* infos) {
   int ltype;
+  int brForwardToNextExpression;
+  int doFixup;
+  struct jumpEntry* entry;
+
+  doFixup = 0;
 
   ltype = gr_expression(infos);
 
   if (isBooleanOperator()) {
+
+    doFixup = 1;
+
     setOperator(infos, symbol);
  
     getSymbol();
+
+    if (getOperator(infos) == SYM_AND) {
+
+      addFalseJump(infos, binaryLength);
+      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
+
+      tfree(1);
+
+      brForwardToNextExpression = binaryLength;
+      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 0);
+
+      fixup_relative(brForwardToNextExpression);
+
+      gr_expression(infos);
+    }
+
+    else if (getOperator(infos) == SYM_OR) {
+
+      addTrueJump(infos, binaryLength);
+      emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 0);
+
+      tfree(1);
+
+      brForwardToNextExpression = binaryLength;
+      emitIFormat(OP_BNE, REG_ZR, REG_ZR, 0);
+
+      fixup_relative(brForwardToNextExpression);
+
+      gr_expression(infos);
+    }
   }
-    
+
+  if (doFixup) {
+
+//    if (getOperator(infos) == SYM_AND)
+      entry = getFalseJumps(infos);
+
+//    else
+//      entry = getTrueJumps(infos);
+
+    while (entry != (struct jumpEntry*) 0) {
+      fixup_relative(entry->value);
+      entry = entry->nextJumpEntry;
+    }    
+  }
+
   setOperator(infos, 0);
 
   return ltype;
