@@ -1819,11 +1819,8 @@ int isCharacterLetter() {
 }
 
 int isCharacterDigit() {
-  if (character >= '0')
-    if (character <= '9')
-      return 1;
-    else
-      return 0;
+  if ((character >= '0') && (character <= '9'))
+    return 1;
   else
     return 0;
 }
