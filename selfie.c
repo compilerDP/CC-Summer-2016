@@ -537,8 +537,6 @@ int  help_call_codegen(struct symbolTableEntry* entry, int* procedure);
 void help_procedure_prologue(int localVariables);
 void help_procedure_epilogue(int parameters);
 
-int  negateOperatorSymbol(int operatorSymbol);
-
 // jump list:
 // +----+----------------+
 // |  0 | nextJumpEntry  | next jump entry
@@ -574,15 +572,13 @@ struct jumpEntry* getNextJumpEntry(struct jumpEntry* entry) {
 // +----+----------------+
 // |  0 | isConstant     | 0 (value is not a constant), 1 (value is a constant)
 // |  1 | value          | constants integer value
-// |  2 | negation       | 0 (no negation), 1 (negate expression)
-// |  3 | falseJumps     | false jump list
-// |  4 | trueJumps      | true jump list
+// |  2 | falseJumps     | false jump list
+// |  3 | trueJumps      | true jump list
 // +----+----------------+
 
 struct attribute {
   int isConstant;
   int value;
-  int negation;
   struct jumpEntry* falseJumps;
   struct jumpEntry* trueJumps;
 };
@@ -594,10 +590,8 @@ int  isConstant(struct attribute* infos);
 int  getConstantValue(struct attribute* infos);
 
 // boolean expression
-void setNegation(struct attribute* infos, int negation);
 void addFalseJump(struct attribute* infos, int falseJumpValue);
 void addTrueJump(struct attribute* infos, int trueJumpValue);
-int  getNegation(struct attribute* infos);
 struct jumpEntry* getFalseJumps(struct attribute* infos);
 struct jumpEntry* getTrueJumps(struct attribute* infos);
 
@@ -644,6 +638,7 @@ void emitMainEntry();
 void fixRegisterInitialization();
 void multiplyRegisterWith(int m);
 void multiplyWithTypeSize(int type);
+void emitNegation();
 
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
@@ -2747,32 +2742,8 @@ void help_procedure_epilogue(int parameters) {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
 }
 
-int negateOperatorSymbol(int operatorSymbol) {
-  if (operatorSymbol == SYM_EQUALITY)
-    return SYM_NOTEQ;
-
-  else if (operatorSymbol == SYM_NOTEQ)
-    return SYM_EQUALITY;
-
-  else if (operatorSymbol == SYM_LT)
-    return SYM_GEQ;
-
-  else if (operatorSymbol == SYM_GT)
-    return SYM_LEQ;
-
-  else if (operatorSymbol == SYM_LEQ)
-    return SYM_GT;
-
-  else if (operatorSymbol == SYM_GEQ)
-    return SYM_LT;
-
-  else
-    return operatorSymbol;
-}
-
 void initInfos(struct attribute* infos) {
   resetIsConstant(infos);
-  setNegation(infos, 0);
   resetJumps(infos->falseJumps);
   resetJumps(infos->trueJumps);
 }
@@ -2790,7 +2761,6 @@ void setIsConstant(struct attribute* infos, int value) {
 int isConstant(struct attribute* infos)       { return infos->isConstant; }
 int getConstantValue(struct attribute* infos) { return infos->value; }
 
-void setNegation(struct attribute* infos, int negation)      { infos->negation = negation; }
 void addFalseJump(struct attribute* infos, int falseJumpValue) { 
   infos->falseJumps = newJumpEntry(infos->falseJumps, falseJumpValue); 
 }
@@ -2798,7 +2768,6 @@ void addTrueJump(struct attribute* infos, int trueJumpValue) {
   infos->trueJumps = newJumpEntry(infos->trueJumps, trueJumpValue); 
 }
 
-int  getNegation(struct attribute* infos)                { return infos->negation; }
 struct jumpEntry* getFalseJumps(struct attribute* infos) { return infos->falseJumps; }
 struct jumpEntry* getTrueJumps(struct attribute* infos)  { return infos->trueJumps; }
 
@@ -3382,10 +3351,8 @@ int gr_factor(struct attribute* infos) {
 
     type = INTSTAR_T;
 
-  //  "!" "(" expression ")"
+  //  "!" [ "(" ] boolExpression [ ")" ]
   } else if (symbol == SYM_NOT) {
-    setNegation(infos, 1);
-
     getSymbol();
 
     if (symbol == SYM_LPARENTHESIS) {
@@ -3397,8 +3364,11 @@ int gr_factor(struct attribute* infos) {
         getSymbol();
       else
         syntaxErrorSymbol(SYM_RPARENTHESIS);
+
     } else
-      syntaxErrorSymbol(SYM_RPARENTHESIS);
+      type = gr_boolExpression(infos);
+
+    emitNegation();
 
   //  "(" expression ")"
   } else if (symbol == SYM_LPARENTHESIS) {
@@ -3777,10 +3747,6 @@ int gr_expression(struct attribute* infos) {
   int ltype;
   int operatorSymbol;
   int rtype;
-  int negation;
-
-  negation = getNegation(infos);
-  setNegation(infos, 0);
 
   // assert: n = allocatedTemporaries
 
@@ -3796,9 +3762,6 @@ int gr_expression(struct attribute* infos) {
   //optional: ==, !=, <, >, <=, >= simpleExpression
   if (isComparison()) {
     operatorSymbol = symbol;
-
-    if (negation)
-      operatorSymbol = negateOperatorSymbol(operatorSymbol);
 
     getSymbol();
 
@@ -4950,6 +4913,13 @@ void multiplyWithTypeSize(int type) {
     emitIFormat(OP_ADDIU, REG_ZR, nextTemporary(), size);
     emitRFormat(OP_SPECIAL, currentTemporary(), nextTemporary(), 0, 0, FCT_MULTU);
     emitRFormat(OP_SPECIAL, 0, 0, currentTemporary(), 0, FCT_MFLO);
+}
+
+void emitNegation() {
+   emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 4);
+   emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+   emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
+   emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
 }
 
 // -----------------------------------------------------------------

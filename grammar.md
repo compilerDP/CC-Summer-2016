@@ -23,6 +23,8 @@ type             = "int" [ "*" ] .
 
 cast             = "(" type ")" .
 
+negation         = [ "!" ] "(" boolExpression ")" .
+
 field            = ( type identifier [ "[" integer "]" [ "[" integer "]" ] ] |
                    "struct" identifier "*" identifier ) ";" .
 
@@ -40,7 +42,7 @@ literal          = integer | "'" ascii_character "'" .
 
 factor           = [ cast ] 
                     ( [ "*" ] ( identifier | "(" boolExpression ")" ) |
-                      [ "!" ] "(" boolExpression ")" |
+                      negation |
                       fieldAccess |
                       array |
                       call |
