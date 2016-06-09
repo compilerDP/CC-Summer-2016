@@ -3351,7 +3351,7 @@ int gr_factor(struct attribute* infos) {
 
     type = INTSTAR_T;
 
-  //  "!" [ "(" ] boolExpression [ ")" ]
+  //  "!" "(" boolExpression ")"
   } else if (symbol == SYM_NOT) {
     getSymbol();
 
