@@ -547,10 +547,6 @@ struct jumpEntry {
   int value;
 };
 
-void resetJumps(struct jumpEntry* entry) {
-  entry = (struct jumpEntry*) 0;
-}
-
 struct jumpEntry* newJumpEntry(struct jumpEntry* lastEntry, int value) {
   struct jumpEntry* entry;
   entry = (struct jumpEntry*) malloc(SIZEOFRECORDSTAR + SIZEOFINT);
@@ -595,6 +591,14 @@ void addTrueJump(struct attribute* infos, int trueJumpValue);
 struct jumpEntry* getFalseJumps(struct attribute* infos);
 struct jumpEntry* getTrueJumps(struct attribute* infos);
 
+void resetFalseJumps(struct attribute* infos) {
+  infos->falseJumps = (struct jumpEntry*) 0;
+}
+
+void resetTrueJumps(struct attribute* infos) {
+  infos->trueJumps = (struct jumpEntry*) 0;
+}
+
 void initInfos(struct attribute* infos);
 
 void gr_selector(struct attribute* infos, struct symbolTableEntry* entry);
@@ -608,6 +612,7 @@ int  gr_term(struct attribute* infos);
 int  gr_simpleExpression(struct attribute* infos);
 int  gr_logicalShift(struct attribute* infos);
 int  gr_expression(struct attribute* infos);
+int  gr_andExpression(struct attribute* infos);
 int  gr_boolExpression(struct attribute* infos);
 void gr_while(struct attribute* infos);
 void gr_if(struct attribute* infos);
@@ -1799,16 +1804,8 @@ int findNextCharacter() {
 }
 
 int isCharacterLetter() {
-  if (character >= 'a')
-    if (character <= 'z')
-      return 1;
-    else
-      return 0;
-  else if (character >= 'A')
-    if (character <= 'Z')
-      return 1;
-    else
-      return 0;
+  if (((character >= 'a') && (character <= 'z')) || ((character >= 'A') && (character <= 'Z')))
+    return 1;
   else
     return 0;
 }
@@ -2744,8 +2741,8 @@ void help_procedure_epilogue(int parameters) {
 
 void initInfos(struct attribute* infos) {
   resetIsConstant(infos);
-  resetJumps(infos->falseJumps);
-  resetJumps(infos->trueJumps);
+  resetFalseJumps(infos);
+  resetTrueJumps(infos);
 }
 
 void resetIsConstant(struct attribute* infos) {
@@ -3840,10 +3837,8 @@ int gr_expression(struct attribute* infos) {
   return ltype;
 }
 
-int gr_boolExpression(struct attribute* infos) {
+int gr_andExpression(struct attribute* infos) {
   int ltype;
-  int operator;
-  int brForwardToNextExpression;
   int doFixup;
   struct jumpEntry* entry;
 
@@ -3851,57 +3846,70 @@ int gr_boolExpression(struct attribute* infos) {
 
   ltype = gr_expression(infos);
 
-  while (isBooleanOperator()) {
+  while (symbol == SYM_AND) {
 
     doFixup = 1;
-
-    operator = symbol;
  
     getSymbol();
 
-    if (operator == SYM_AND) {
+    // if expression is false, jump to the end of all related AND expressions
+    addFalseJump(infos, binaryLength);
+    emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
 
-      addFalseJump(infos, binaryLength);
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
+    tfree(1);
 
-      tfree(1);
-
-      brForwardToNextExpression = binaryLength;
-      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 0);
-
-      fixup_relative(brForwardToNextExpression);
-
-      gr_expression(infos);
-    }
-
-    else if (operator == SYM_OR) {
-
-      addTrueJump(infos, binaryLength);
-      emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 0);
-
-      tfree(1);
-
-      brForwardToNextExpression = binaryLength;
-      emitIFormat(OP_BNE, REG_ZR, REG_ZR, 0);
-
-      fixup_relative(brForwardToNextExpression);
-
-      gr_expression(infos);
-    }
+    gr_expression(infos);
   }
 
   if (doFixup) {
 
-    if (operator == SYM_AND)
-      entry = getFalseJumps(infos);
-
-    else
-      entry = getTrueJumps(infos);
+    entry = getFalseJumps(infos);
 
     while (entry != (struct jumpEntry*) 0) {
       fixup_relative(entry->value);
       entry = entry->nextJumpEntry;
-    }    
+    } 
+
+    resetFalseJumps(infos);   
+  }
+
+  return ltype;
+}
+
+int gr_boolExpression(struct attribute* infos) {
+  int ltype;
+  int doFixup;
+  struct jumpEntry* entry;
+
+  doFixup = 0;
+
+  ltype = gr_andExpression(infos);
+
+  while (symbol == SYM_OR) {
+
+    doFixup = 1;
+ 
+    getSymbol();
+
+    // if expression is true, jump to the end
+    addTrueJump(infos, binaryLength);
+    emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 0);
+
+    tfree(1);
+
+    gr_andExpression(infos);
+  }
+
+  if (doFixup) {
+
+    entry = getTrueJumps(infos);
+
+    while (entry != (struct jumpEntry*) 0) {
+      fixup_relative(entry->value);
+      entry = entry->nextJumpEntry;
+    } 
+
+    resetTrueJumps(infos); 
   }
 
   return ltype;
