@@ -547,10 +547,6 @@ struct jumpEntry {
   int value;
 };
 
-void resetJumps(struct jumpEntry* entry) {
-  entry = (struct jumpEntry*) 0;
-}
-
 struct jumpEntry* newJumpEntry(struct jumpEntry* lastEntry, int value) {
   struct jumpEntry* entry;
   entry = (struct jumpEntry*) malloc(SIZEOFRECORDSTAR + SIZEOFINT);
@@ -594,6 +590,14 @@ void addFalseJump(struct attribute* infos, int falseJumpValue);
 void addTrueJump(struct attribute* infos, int trueJumpValue);
 struct jumpEntry* getFalseJumps(struct attribute* infos);
 struct jumpEntry* getTrueJumps(struct attribute* infos);
+
+void resetFalseJumps(struct attribute* infos) {
+  infos->falseJumps = (struct jumpEntry*) 0;
+}
+
+void resetTrueJumps(struct attribute* infos) {
+  infos->trueJumps = (struct jumpEntry*) 0;
+}
 
 void initInfos(struct attribute* infos);
 
@@ -2744,8 +2748,8 @@ void help_procedure_epilogue(int parameters) {
 
 void initInfos(struct attribute* infos) {
   resetIsConstant(infos);
-  resetJumps(infos->falseJumps);
-  resetJumps(infos->trueJumps);
+  resetFalseJumps(infos);
+  resetTrueJumps(infos);
 }
 
 void resetIsConstant(struct attribute* infos) {
@@ -3843,7 +3847,6 @@ int gr_expression(struct attribute* infos) {
 int gr_boolExpression(struct attribute* infos) {
   int ltype;
   int operator;
-  int brForwardToNextExpression;
   int doFixup;
   struct jumpEntry* entry;
 
@@ -3866,11 +3869,6 @@ int gr_boolExpression(struct attribute* infos) {
 
       tfree(1);
 
-      brForwardToNextExpression = binaryLength;
-      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 0);
-
-      fixup_relative(brForwardToNextExpression);
-
       gr_expression(infos);
     }
 
@@ -3880,11 +3878,6 @@ int gr_boolExpression(struct attribute* infos) {
       emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 0);
 
       tfree(1);
-
-      brForwardToNextExpression = binaryLength;
-      emitIFormat(OP_BNE, REG_ZR, REG_ZR, 0);
-
-      fixup_relative(brForwardToNextExpression);
 
       gr_expression(infos);
     }
@@ -3902,6 +3895,9 @@ int gr_boolExpression(struct attribute* infos) {
       fixup_relative(entry->value);
       entry = entry->nextJumpEntry;
     }    
+
+    resetFalseJumps(infos);
+    resetTrueJumps(infos);
   }
 
   return ltype;
