@@ -57,7 +57,9 @@ logicalShift     = simpleExpression { ( "<<" | ">>" ) simpleExpression } .
 
 expression       = logicalShift [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) logicalShift ] .
 
-boolExpression   = expression { ( "&&" | "||" ) expression } .
+andExpression    = expression { "&&" expression } .
+
+boolExpression   = andExpression { "||" andExpression } .
 
 while            = "while" "(" boolExpression ")" 
                              ( statement |
