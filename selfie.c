@@ -112,6 +112,7 @@ void printString(int* s);
 int roundUp(int n, int m);
 
 int* malloc(int size);
+//void free(int* memory);
 void exit(int code);
 
 int getSizeOfType(int type);
@@ -397,7 +398,7 @@ void resetScanner() {
 // |  5 | value      | VARIABLE: initial value
 // |  6 | address    | VARIABLE, STRING, RECORD: offset, PROCEDURE: address
 // |  7 | scope      | REG_GP, REG_FP
-// |  8 | arraySize  | number of elements 
+// |  8 | arraySize  | number of elements
 // |  9 | elemType   | INT_T, INTSTAR_T
 // | 10 | secDimSize | size of second array dimension
 // | 11 | recordDef  | RECORD variable: pointer to record definition 
@@ -486,6 +487,8 @@ int GLOBAL_TABLE  = 1;
 int LOCAL_TABLE   = 2;
 int LIBRARY_TABLE = 3;
 
+int symbolTableEntrySize = 0;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 // table pointers
@@ -537,31 +540,24 @@ int  help_call_codegen(struct symbolTableEntry* entry, int* procedure);
 void help_procedure_prologue(int localVariables);
 void help_procedure_epilogue(int parameters);
 
-// jump list:
-// +----+----------------+
-// |  0 | nextJumpEntry  | next jump entry
-// |  1 | value          | value
-// +----+----------------+
-struct jumpEntry {
-  struct jumpEntry* nextJumpEntry;
+// list:
+// +----+------------+
+// |  0 | nextEntry  | next list entry
+// |  1 | value      | jump list: address in binary file, free list: free address
+// +----+------------+
+struct listEntry {
+  struct listEntry* nextEntry;
   int value;
 };
 
-struct jumpEntry* newJumpEntry(struct jumpEntry* lastEntry, int value) {
-  struct jumpEntry* entry;
-  entry = (struct jumpEntry*) malloc(SIZEOFRECORDSTAR + SIZEOFINT);
+struct listEntry* newListEntry(struct listEntry* lastEntry, int value) {
+  struct listEntry* entry;
+  entry = (struct listEntry*) malloc(SIZEOFRECORDSTAR + SIZEOFINT);
   
-  entry->nextJumpEntry = lastEntry;
+  entry->nextEntry = lastEntry;
   entry->value = value;
 
   return entry;
-}
-
-struct jumpEntry* getNextJumpEntry(struct jumpEntry* entry) {
-  if (entry == (struct jumpEntry*) 0)
-    return entry;
-
-  return entry->nextJumpEntry;
 }
 
 // attribute:
@@ -570,13 +566,15 @@ struct jumpEntry* getNextJumpEntry(struct jumpEntry* entry) {
 // |  1 | value          | constants integer value
 // |  2 | falseJumps     | false jump list
 // |  3 | trueJumps      | true jump list
+// |  4 | freeList       | list of free addresses
 // +----+----------------+
 
 struct attribute {
   int isConstant;
   int value;
-  struct jumpEntry* falseJumps;
-  struct jumpEntry* trueJumps;
+  struct listEntry* falseJumps;
+  struct listEntry* trueJumps;
+  struct listEntry* freeList;
 };
 
 // constant folding
@@ -588,16 +586,14 @@ int  getConstantValue(struct attribute* infos);
 // boolean expression
 void addFalseJump(struct attribute* infos, int falseJumpValue);
 void addTrueJump(struct attribute* infos, int trueJumpValue);
-struct jumpEntry* getFalseJumps(struct attribute* infos);
-struct jumpEntry* getTrueJumps(struct attribute* infos);
+struct listEntry* getFalseJumps(struct attribute* infos);
+struct listEntry* getTrueJumps(struct attribute* infos);
+void resetFalseJumps(struct attribute* infos);
+void resetTrueJumps(struct attribute* infos);
 
-void resetFalseJumps(struct attribute* infos) {
-  infos->falseJumps = (struct jumpEntry*) 0;
-}
-
-void resetTrueJumps(struct attribute* infos) {
-  infos->trueJumps = (struct jumpEntry*) 0;
-}
+// free
+void addFreeAddress(struct attribute* infos, int address);
+struct listEntry* getFreeAddress(struct attribute* infos);
 
 void initInfos(struct attribute* infos);
 
@@ -915,6 +911,9 @@ void implementOpen();
 void emitMalloc();
 void implementMalloc();
 
+void emitFree();
+void implementFree();
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 int debug_read   = 0;
@@ -922,6 +921,7 @@ int debug_write  = 0;
 int debug_open   = 0;
 
 int debug_malloc = 0;
+int debug_free   = 0;
 
 int SYSCALL_EXIT   = 4001;
 int SYSCALL_READ   = 4003;
@@ -929,6 +929,7 @@ int SYSCALL_WRITE  = 4004;
 int SYSCALL_OPEN   = 4005;
 
 int SYSCALL_MALLOC = 4045;
+int SYSCALL_FREE   = 4046;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -2182,7 +2183,9 @@ struct symbolTableEntry* createSymbolTableEntry(int whichTable, int* string, int
 
   struct symbolTableEntry* newEntry;
 
-  newEntry = (struct symbolTableEntry*) malloc(3 * SIZEOFRECORDSTAR + 1 * SIZEOFINTSTAR + 10 * SIZEOFINT);
+  symbolTableEntrySize = 3 * SIZEOFRECORDSTAR + 1 * SIZEOFINTSTAR + 10 * SIZEOFINT;
+
+  newEntry = (struct symbolTableEntry*) malloc(symbolTableEntrySize);
 
   setString(newEntry, string);
   setLineNumber(newEntry, line);
@@ -2759,14 +2762,22 @@ int isConstant(struct attribute* infos)       { return infos->isConstant; }
 int getConstantValue(struct attribute* infos) { return infos->value; }
 
 void addFalseJump(struct attribute* infos, int falseJumpValue) { 
-  infos->falseJumps = newJumpEntry(infos->falseJumps, falseJumpValue); 
+  infos->falseJumps = newListEntry(infos->falseJumps, falseJumpValue); 
 }
 void addTrueJump(struct attribute* infos, int trueJumpValue) {
-  infos->trueJumps = newJumpEntry(infos->trueJumps, trueJumpValue); 
+  infos->trueJumps = newListEntry(infos->trueJumps, trueJumpValue); 
 }
 
-struct jumpEntry* getFalseJumps(struct attribute* infos) { return infos->falseJumps; }
-struct jumpEntry* getTrueJumps(struct attribute* infos)  { return infos->trueJumps; }
+struct listEntry* getFalseJumps(struct attribute* infos) { return infos->falseJumps; }
+struct listEntry* getTrueJumps(struct attribute* infos)  { return infos->trueJumps; }
+
+void resetFalseJumps(struct attribute* infos) { infos->falseJumps = (struct listEntry*) 0; }
+void resetTrueJumps(struct attribute* infos)  { infos->trueJumps = (struct listEntry*) 0; }
+
+void addFreeAddress(struct attribute* infos, int address) {
+  infos->freeList = newListEntry(infos->freeList, address);
+}
+struct listEntry* getFreeAddress(struct attribute* infos) { return infos->freeList; }
 
 int gr_call(int* procedure, struct attribute* infos) {
   struct symbolTableEntry* entry;
@@ -2788,6 +2799,7 @@ int gr_call(int* procedure, struct attribute* infos) {
   // assert: allocatedTemporaries == 0
 
   if (isExpression()) {
+
     type = gr_boolExpression(infos);
 
     // TODO: check if types/number of parameters is correct
@@ -3840,7 +3852,7 @@ int gr_expression(struct attribute* infos) {
 int gr_andExpression(struct attribute* infos) {
   int ltype;
   int doFixup;
-  struct jumpEntry* entry;
+  struct listEntry* entry;
 
   doFixup = 0;
 
@@ -3865,9 +3877,9 @@ int gr_andExpression(struct attribute* infos) {
 
     entry = getFalseJumps(infos);
 
-    while (entry != (struct jumpEntry*) 0) {
+    while (entry != (struct listEntry*) 0) {
       fixup_relative(entry->value);
-      entry = entry->nextJumpEntry;
+      entry = entry->nextEntry;
     } 
 
     resetFalseJumps(infos);   
@@ -3879,7 +3891,7 @@ int gr_andExpression(struct attribute* infos) {
 int gr_boolExpression(struct attribute* infos) {
   int ltype;
   int doFixup;
-  struct jumpEntry* entry;
+  struct listEntry* entry;
 
   doFixup = 0;
 
@@ -3904,9 +3916,9 @@ int gr_boolExpression(struct attribute* infos) {
 
     entry = getTrueJumps(infos);
 
-    while (entry != (struct jumpEntry*) 0) {
+    while (entry != (struct listEntry*) 0) {
       fixup_relative(entry->value);
-      entry = entry->nextJumpEntry;
+      entry = entry->nextEntry;
     } 
 
     resetTrueJumps(infos); 
@@ -4665,7 +4677,7 @@ void gr_cstar() {
 
   arraySize = 0;
 
-  infos = (struct attribute*) malloc(4 * SIZEOFINT + 2 * SIZEOFRECORDSTAR);
+  infos = (struct attribute*) malloc(2 * SIZEOFINT + 3 * SIZEOFRECORDSTAR);
   initInfos(infos);
 
   while (symbol != SYM_EOF) {
@@ -5835,10 +5847,10 @@ void emitMalloc() {
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // size
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-    emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_MALLOC);
-    emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_MALLOC);
+  emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
 
-    emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
+  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
 }
 
 void implementMalloc() {
@@ -5873,6 +5885,12 @@ void implementMalloc() {
       println();
     }
   }
+}
+
+void emitFree() {
+}
+
+void implementFree() {
 }
 
 // -----------------------------------------------------------------
@@ -6336,6 +6354,8 @@ void fct_syscall() {
       implementOpen();
     else if (*(registers+REG_V0) == SYSCALL_MALLOC)
       implementMalloc();
+    else if (*(registers+REG_V0) == SYSCALL_FREE)
+      implementFree();
     else if (*(registers+REG_V0) == SYSCALL_ID)
       implementID();
     else if (*(registers+REG_V0) == SYSCALL_CREATE)
