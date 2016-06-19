@@ -112,7 +112,7 @@ void printString(int* s);
 int roundUp(int n, int m);
 
 int* malloc(int size);
-//void free(int* memory);
+void free(int* address);
 void exit(int code);
 
 int getSizeOfType(int type);
@@ -187,6 +187,9 @@ int O_CREAT_WRONLY_TRUNC = 577; // flags for opening write-only files
 
 // 420 = 00644 = S_IRUSR (00400) | S_IWUSR (00200) | S_IRGRP (00040) | S_IROTH (00004)
 int S_IRUSR_IWUSR_IRGRP_IROTH = 420; // flags for rw-r--r-- file permissions
+
+// symbolTableEntrySize = 3 * SIZEOFRECORDSTAR + 1 * SIZEOFINTSTAR + 10 * SIZEOFINT
+int symbolTableEntrySize = 56;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -498,8 +501,6 @@ int RECORD_T  = 5;
 int GLOBAL_TABLE  = 1;
 int LOCAL_TABLE   = 2;
 int LIBRARY_TABLE = 3;
-
-int symbolTableEntrySize = 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2185,8 +2186,6 @@ int getSymbol() {
 struct symbolTableEntry* createSymbolTableEntry(int whichTable, int* string, int line, int class, int type, int value, int address, int arraySize, int elemType, int secDimSize, struct symbolTableEntry* recordDef, int recordSize, struct symbolTableEntry* nextField) {
 
   struct symbolTableEntry* newEntry;
-
-  symbolTableEntrySize = 3 * SIZEOFRECORDSTAR + 1 * SIZEOFINTSTAR + 10 * SIZEOFINT;
 
   newEntry = (struct symbolTableEntry*) malloc(symbolTableEntrySize);
 
@@ -4990,6 +4989,7 @@ void selfie_compile() {
   emitWrite();
   emitOpen();
   emitMalloc();
+  emitFree();
 
   emitID();
   emitCreate();
@@ -5865,14 +5865,11 @@ void implementMalloc() {
 
   size = roundUp(*(registers+REG_A0), WORDSIZE);
 
-  bump = brk;
+  if ((*(registers+REG_A0) == symbolTableEntrySize) && (freeList != (struct listEntry*) 0)) {
 
-  if (bump + size >= *(registers+REG_SP))
-    throwException(EXCEPTION_HEAPOVERFLOW, 0);
-  else {
+    bump = getFreeAddress();
+
     *(registers+REG_V0) = bump;
-
-    brk = bump + size;
 
     if (debug_malloc) {
       print(binaryName);
@@ -5882,13 +5879,56 @@ void implementMalloc() {
       print(itoa(bump, string_buffer, 16, 8, 0));
       println();
     }
+
+  } else {
+
+    bump = brk;
+
+    if (bump + size >= *(registers+REG_SP))
+      throwException(EXCEPTION_HEAPOVERFLOW, 0);
+    else {
+      *(registers+REG_V0) = bump;
+
+      brk = bump + size;
+
+      if (debug_malloc) {
+        print(binaryName);
+        print((int*) ": actually mallocating ");
+        print(itoa(size, string_buffer, 10, 0, 0));
+        print((int*) " bytes at virtual address ");
+        print(itoa(bump, string_buffer, 16, 8, 0));
+        println();
+      }
+    }
   }
 }
 
 void emitFree() {
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "free", 0, PROCEDURE, VOID_T, 0, binaryLength, 0, 0, 0, (struct symbolTableEntry*) 0, 0, (struct symbolTableEntry*) 0);
+
+  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // pointer
+  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+
+  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_FREE);
+  emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
+
+  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
 }
 
 void implementFree() {
+
+  addFreeAddress(*(registers+REG_A0));
+
+  *(registers+REG_V0) = 0;
+
+  if (debug_free) {
+    print(binaryName);
+    print((int*) ": actually freeing ");
+    print(itoa(roundUp(symbolTableEntrySize, WORDSIZE), string_buffer, 10, 0, 0));
+    print((int*) " bytes at virtual address ");
+    print(itoa(*(registers+REG_A0), string_buffer, 16, 8, 0));
+    println();
+  }
 }
 
 // -----------------------------------------------------------------
