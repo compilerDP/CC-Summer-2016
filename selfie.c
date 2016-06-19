@@ -117,6 +117,18 @@ void exit(int code);
 
 int getSizeOfType(int type);
 
+// list:
+// +----+------------+
+// |  0 | nextEntry  | next list entry
+// |  1 | value      | jump list: address in binary file, free list: free address
+// +----+------------+
+struct listEntry {
+  struct listEntry* nextEntry;
+  int value;
+};
+
+struct listEntry* newListEntry(struct listEntry* lastEntry, int value);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 int CHAR_EOF          = -1; // end of file
@@ -540,33 +552,12 @@ int  help_call_codegen(struct symbolTableEntry* entry, int* procedure);
 void help_procedure_prologue(int localVariables);
 void help_procedure_epilogue(int parameters);
 
-// list:
-// +----+------------+
-// |  0 | nextEntry  | next list entry
-// |  1 | value      | jump list: address in binary file, free list: free address
-// +----+------------+
-struct listEntry {
-  struct listEntry* nextEntry;
-  int value;
-};
-
-struct listEntry* newListEntry(struct listEntry* lastEntry, int value) {
-  struct listEntry* entry;
-  entry = (struct listEntry*) malloc(SIZEOFRECORDSTAR + SIZEOFINT);
-  
-  entry->nextEntry = lastEntry;
-  entry->value = value;
-
-  return entry;
-}
-
 // attribute:
 // +----+----------------+
 // |  0 | isConstant     | 0 (value is not a constant), 1 (value is a constant)
 // |  1 | value          | constants integer value
 // |  2 | falseJumps     | false jump list
 // |  3 | trueJumps      | true jump list
-// |  4 | freeList       | list of free addresses
 // +----+----------------+
 
 struct attribute {
@@ -574,7 +565,6 @@ struct attribute {
   int value;
   struct listEntry* falseJumps;
   struct listEntry* trueJumps;
-  struct listEntry* freeList;
 };
 
 // constant folding
@@ -590,10 +580,6 @@ struct listEntry* getFalseJumps(struct attribute* infos);
 struct listEntry* getTrueJumps(struct attribute* infos);
 void resetFalseJumps(struct attribute* infos);
 void resetTrueJumps(struct attribute* infos);
-
-// free
-void addFreeAddress(struct attribute* infos, int address);
-struct listEntry* getFreeAddress(struct attribute* infos);
 
 void initInfos(struct attribute* infos);
 
@@ -1104,6 +1090,9 @@ void printProfile(int* message, int total, int* counters);
 void selfie_disassemble(int argc, int* argv);
 void selfie_run(int argc, int* argv);
 
+void addFreeAddress(int address);
+int  getFreeAddress();
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 int EXCEPTION_NOEXCEPTION        = 0;
@@ -1164,6 +1153,8 @@ int* loadsPerAddress = (int*) 0; // number of executed loads per load operation
 int  stores           = 0;        // total number of executed memory stores
 int* storesPerAddress = (int*) 0; // number of executed stores per store operation
 
+struct listEntry* freeList;
+
 // ------------------------- INITIALIZATION ------------------------
 
 void initInterpreter() {
@@ -1177,6 +1168,8 @@ void initInterpreter() {
   *(EXCEPTIONS + EXCEPTION_EXIT)               = (int) "exit";
   *(EXCEPTIONS + EXCEPTION_INTERRUPT)          = (int) "timer interrupt";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (int) "page fault";
+
+  freeList = (struct listEntry*) 0;
 }
 
 void resetInterpreter() {
@@ -1672,6 +1665,16 @@ int getSizeOfType(int type) {
     return SIZEOFRECORDSTAR;
   else
     return 0;
+}
+
+struct listEntry* newListEntry(struct listEntry* lastEntry, int value) {
+  struct listEntry* entry;
+  entry = (struct listEntry*) malloc(SIZEOFRECORDSTAR + SIZEOFINT);
+  
+  entry->nextEntry = lastEntry;
+  entry->value = value;
+
+  return entry;
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -2773,11 +2776,6 @@ struct listEntry* getTrueJumps(struct attribute* infos)  { return infos->trueJum
 
 void resetFalseJumps(struct attribute* infos) { infos->falseJumps = (struct listEntry*) 0; }
 void resetTrueJumps(struct attribute* infos)  { infos->trueJumps = (struct listEntry*) 0; }
-
-void addFreeAddress(struct attribute* infos, int address) {
-  infos->freeList = newListEntry(infos->freeList, address);
-}
-struct listEntry* getFreeAddress(struct attribute* infos) { return infos->freeList; }
 
 int gr_call(int* procedure, struct attribute* infos) {
   struct symbolTableEntry* entry;
@@ -4677,7 +4675,7 @@ void gr_cstar() {
 
   arraySize = 0;
 
-  infos = (struct attribute*) malloc(2 * SIZEOFINT + 3 * SIZEOFRECORDSTAR);
+  infos = (struct attribute*) malloc(2 * SIZEOFINT + 2 * SIZEOFRECORDSTAR);
   initInfos(infos);
 
   while (symbol != SYM_EOF) {
@@ -7632,6 +7630,25 @@ void selfie_run(int argc, int* argv) {
     printProfile((int*) ": loads: ", loads, loadsPerAddress);
     printProfile((int*) ": stores: ", stores, storesPerAddress);
   }
+}
+
+void addFreeAddress(int address) {
+  freeList = newListEntry(freeList, address);
+}
+
+int getFreeAddress() { 
+  int freeAddress;
+
+  freeAddress = 0;
+
+  if (freeList != (struct listEntry*) 0) {
+
+    freeAddress = freeList->value;
+
+    freeList = freeList->nextEntry;
+  }
+
+  return freeAddress; 
 }
 
 // -----------------------------------------------------------------
