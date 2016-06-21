@@ -4658,7 +4658,15 @@ void gr_procedure(int* procedure, int returnType, struct attribute* infos) {
   } else
     syntaxErrorUnexpected();
 
-  local_symbol_table = (struct symbolTableEntry*) 0;
+  while (local_symbol_table != (struct symbolTableEntry*) 0) {
+    entry = local_symbol_table;
+
+    local_symbol_table = local_symbol_table->nextEntry;
+
+    free((int*) entry);
+  }
+
+  //local_symbol_table = (struct symbolTableEntry*) 0;
 
   // assert: allocatedTemporaries == 0
 }
