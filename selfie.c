@@ -117,18 +117,6 @@ void exit(int code);
 
 int getSizeOfType(int type);
 
-// list:
-// +----+------------+
-// |  0 | nextEntry  | next list entry
-// |  1 | value      | jump list: address in binary file, free list: free address
-// +----+------------+
-struct listEntry {
-  struct listEntry* nextEntry;
-  int value;
-};
-
-struct listEntry* newListEntry(struct listEntry* lastEntry, int value);
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 int CHAR_EOF          = -1; // end of file
@@ -552,6 +540,26 @@ void load_string(int* string);
 int  help_call_codegen(struct symbolTableEntry* entry, int* procedure);
 void help_procedure_prologue(int localVariables);
 void help_procedure_epilogue(int parameters);
+
+// list:
+// +----+------------+
+// |  0 | nextEntry  | next list entry
+// |  1 | value      | jump list: address in binary file
+// +----+------------+
+struct listEntry {
+  struct listEntry* nextEntry;
+  int value;
+};
+
+struct listEntry* newListEntry(struct listEntry* lastEntry, int value) {
+  struct listEntry* entry;
+  entry = (struct listEntry*) malloc(SIZEOFRECORDSTAR + SIZEOFINT);
+  
+  entry->nextEntry = lastEntry;
+  entry->value = value;
+
+  return entry;
+}
 
 // attribute:
 // +----+----------------+
@@ -1017,6 +1025,8 @@ int PAGEBITS = 12;   // 2^12 == 4096
 
 int frameMemorySize = 0; // size of memory for frames in bytes
 
+int freeList = 0;
+
 // ------------------------- INITIALIZATION ------------------------
 
 void initMemory(int bytes) {
@@ -1091,9 +1101,6 @@ void printProfile(int* message, int total, int* counters);
 void selfie_disassemble(int argc, int* argv);
 void selfie_run(int argc, int* argv);
 
-void addFreeAddress(int address);
-int  getFreeAddress();
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 int EXCEPTION_NOEXCEPTION        = 0;
@@ -1154,8 +1161,6 @@ int* loadsPerAddress = (int*) 0; // number of executed loads per load operation
 int  stores           = 0;        // total number of executed memory stores
 int* storesPerAddress = (int*) 0; // number of executed stores per store operation
 
-struct listEntry* freeList;
-
 // ------------------------- INITIALIZATION ------------------------
 
 void initInterpreter() {
@@ -1169,8 +1174,6 @@ void initInterpreter() {
   *(EXCEPTIONS + EXCEPTION_EXIT)               = (int) "exit";
   *(EXCEPTIONS + EXCEPTION_INTERRUPT)          = (int) "timer interrupt";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (int) "page fault";
-
-  freeList = (struct listEntry*) 0;
 }
 
 void resetInterpreter() {
@@ -1666,16 +1669,6 @@ int getSizeOfType(int type) {
     return SIZEOFRECORDSTAR;
   else
     return 0;
-}
-
-struct listEntry* newListEntry(struct listEntry* lastEntry, int value) {
-  struct listEntry* entry;
-  entry = (struct listEntry*) malloc(SIZEOFRECORDSTAR + SIZEOFINT);
-  
-  entry->nextEntry = lastEntry;
-  entry->value = value;
-
-  return entry;
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -5871,11 +5864,19 @@ void implementMalloc() {
 
   size = roundUp(*(registers+REG_A0), WORDSIZE);
 
-  if ((*(registers+REG_A0) == symbolTableEntrySize) && (freeList != (struct listEntry*) 0)) {
+  if ((*(registers+REG_A0) == symbolTableEntrySize) && (freeList != 0)) {
 
-    bump = getFreeAddress();
+    if (isValidVirtualAddress(freeList)) {
+      if (isVirtualAddressMapped(pt, freeList)) {
+        bump = loadVirtualMemory(pt, freeList);
+      } else
+        throwException(EXCEPTION_PAGEFAULT, freeList);
+    } else
+      throwException(EXCEPTION_ADDRESSERROR, freeList);
 
-    *(registers+REG_V0) = bump;
+    *(registers+REG_V0) = freeList;
+
+    freeList = bump;
 
     if (debug_malloc) {
       print(binaryName);
@@ -5922,8 +5923,19 @@ void emitFree() {
 }
 
 void implementFree() {
+  int freeAddress;
 
-  addFreeAddress(*(registers+REG_A0));
+  freeAddress = *(registers+REG_A0);
+
+  if (isValidVirtualAddress(freeAddress)) {
+    if (isVirtualAddressMapped(pt, freeAddress)) {
+      storeVirtualMemory(pt, freeAddress, freeList);
+    } else
+      throwException(EXCEPTION_PAGEFAULT, freeAddress);
+  } else
+    throwException(EXCEPTION_ADDRESSERROR, freeAddress);
+
+  freeList = freeAddress;
 
   *(registers+REG_V0) = 0;
 
@@ -7676,25 +7688,6 @@ void selfie_run(int argc, int* argv) {
     printProfile((int*) ": loads: ", loads, loadsPerAddress);
     printProfile((int*) ": stores: ", stores, storesPerAddress);
   }
-}
-
-void addFreeAddress(int address) {
-  freeList = newListEntry(freeList, address);
-}
-
-int getFreeAddress() { 
-  int freeAddress;
-
-  freeAddress = 0;
-
-  if (freeList != (struct listEntry*) 0) {
-
-    freeAddress = freeList->value;
-
-    freeList = freeList->nextEntry;
-  }
-
-  return freeAddress; 
 }
 
 // -----------------------------------------------------------------
