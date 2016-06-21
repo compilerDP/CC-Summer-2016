@@ -4666,8 +4666,6 @@ void gr_procedure(int* procedure, int returnType, struct attribute* infos) {
     free((int*) entry);
   }
 
-  //local_symbol_table = (struct symbolTableEntry*) 0;
-
   // assert: allocatedTemporaries == 0
 }
 
