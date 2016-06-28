@@ -148,9 +148,9 @@ int CHAR_RBRACKET     = ']';
 int CHAR_AMPERSAND    = '&';
 int CHAR_PIPE         = '|';
 
-int SIZEOFINT     = 4; // must be the same as WORDSIZE
-int SIZEOFINTSTAR = 4; // must be the same as WORDSIZE
-int SIZEOFRECORDSTAR = 4;
+int SIZEOFINT     = 4;    // must be the same as WORDSIZE
+int SIZEOFINTSTAR = 4;    // must be the same as WORDSIZE
+int SIZEOFRECORDSTAR = 4; // must be the same as WORDSIZE
 
 int* power_of_two_table;
 
@@ -255,7 +255,7 @@ int identifierOrKeyword();
 
 void countSymbol(int symbol);
 void printNumberOfSymbols();
-int getSymbol();
+int  getSymbol();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -434,10 +434,8 @@ struct symbolTableEntry* searchSymbolTable(struct symbolTableEntry* entry, int* 
 
 struct symbolTableEntry* getSymbolTableEntry(int* string, int class);
 
-
 int isUndefinedProcedure(struct symbolTableEntry* entry);
 int reportUndefinedProcedures();
-
 
 struct symbolTableEntry* getNextEntry(struct symbolTableEntry* entry){ return entry->nextEntry; }
 int* getString(struct symbolTableEntry* entry)     { return        entry->string; }
@@ -453,7 +451,6 @@ int  getSecDimSize(struct symbolTableEntry* entry) { return        entry->secDim
 struct symbolTableEntry* getRecordDef(struct symbolTableEntry* entry)  { return entry->recordDef; }
 int  getRecordSize(struct symbolTableEntry* entry) { return        entry->recordSize; }
 struct symbolTableEntry* getNextField(struct symbolTableEntry* entry)  { return entry->nextField; }
-
 
 void setNextEntry(struct symbolTableEntry* entry, struct symbolTableEntry* next)      { entry->nextEntry        = next; }
 void setString(struct symbolTableEntry* entry, int* identifier)   { entry->string = identifier; }
@@ -867,7 +864,7 @@ int* touch(int* memory, int length);
 
 void selfie_load();
 
-// ------------------------ GLOBAL CONSTANTS --------------s---------
+// ------------------------ GLOBAL CONSTANTS -----------------------
 
 int maxBinaryLength = 262144; // 256KB
 
@@ -1339,7 +1336,7 @@ int leftShift(int n, int b) {
   // assert: b >= 0;
 
     if (b <= 31)
-    	return n << b; // multiplication is now faster
+    	return n << b;
     else
         return 0;
 }
@@ -1349,7 +1346,7 @@ int rightShift(int n, int b) {
 
     if (n >= 0) {
         if (b < 31)
-        	return n >> b;// division is now faster 
+        	return n >> b;
         else
             return 0;
     } else if (b < 31)
@@ -3697,10 +3694,10 @@ int gr_logicalShift(struct attribute* infos) {
             } else {
 
                 // shift immediate
-		        if (shiftSymbol == SYM_LLS) 
-				    emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), getConstantValue(infos), FCT_SLL);
-			    else if (shiftSymbol == SYM_LRS)
-				    emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), getConstantValue(infos), FCT_SRL);
+		            if (shiftSymbol == SYM_LLS) 
+				          emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), getConstantValue(infos), FCT_SLL);
+			          else if (shiftSymbol == SYM_LRS)
+				          emitRFormat(OP_SPECIAL, 0, currentTemporary(), currentTemporary(), getConstantValue(infos), FCT_SRL);
 
                 useRegister = 0;
                 resetIsConstant(infos);
@@ -4090,11 +4087,11 @@ void gr_return(int returnType, struct attribute* infos) {
     else if (type != returnType)
       typeWarning(returnType, type);
 
-        // save value of expression in return register
-        emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), REG_V0, 0, FCT_ADDU);
-        
-        tfree(1);
-    }
+    // save value of expression in return register
+    emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), REG_V0, 0, FCT_ADDU);
+    
+    tfree(1);
+  }
 
   // unconditional branch to procedure epilogue
   // maintain fixup chain for later fixup
@@ -5156,7 +5153,7 @@ void decodeRFormat() {
     rs          = getRS(ir);
     rt          = getRT(ir);
     rd          = getRD(ir);
-    shamt	    = getShamt(ir);
+    shamt	      = getShamt(ir);
     immediate   = 0;
     function    = getFunction(ir);
     instr_index = 0;
@@ -5511,11 +5508,11 @@ void emitRead() {
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // fd
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-    emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_READ);
-    emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_READ);
+  emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
 
-    // jump back to caller, return value is in REG_V0
-    emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
+  // jump back to caller, return value is in REG_V0
+  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
 }
 
 void implementRead() {
@@ -5628,10 +5625,10 @@ void emitWrite() {
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // fd
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-    emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_WRITE);
-    emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_WRITE);
+  emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
 
-    emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
+  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
 }
 
 void implementWrite() {
@@ -5744,10 +5741,10 @@ void emitOpen() {
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // filename
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-    emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_OPEN);
-    emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_OPEN);
+  emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
 
-    emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
+  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
 }
 
 int down_loadString(int* table, int vaddr, int* s) {
@@ -5982,10 +5979,10 @@ int selfie_ID() {
 void emitCreate() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_create", 0, PROCEDURE, INT_T, 0, binaryLength, 0, 0, 0, (struct symbolTableEntry*) 0, 0, (struct symbolTableEntry*) 0);
 
-    emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_CREATE);
-    emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_CREATE);
+  emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
 
-    emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
+  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
 }
 
 int doCreate(int parentID) {
@@ -6037,13 +6034,13 @@ void emitSwitch() {
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // ID of context to which we switch
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-    emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_SWITCH);
-    emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_SWITCH);
+  emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
 
-    // save ID of context from which we are switching here in return register
-    emitRFormat(OP_SPECIAL, REG_ZR, REG_V1, REG_V0, 0, FCT_ADDU);
+  // save ID of context from which we are switching here in return register
+  emitRFormat(OP_SPECIAL, REG_ZR, REG_V1, REG_V0, 0, FCT_ADDU);
 
-    emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
+  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
 }
 
 int doSwitch(int toID) {
@@ -6115,10 +6112,10 @@ int selfie_switch(int toID) {
 void emitStatus() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_status", 0, PROCEDURE, INT_T, 0, binaryLength, 0, 0, 0, (struct symbolTableEntry*) 0, 0, (struct symbolTableEntry*) 0);
 
-    emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_STATUS);
-    emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_STATUS);
+  emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
 
-    emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
+  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
 }
 
 int doStatus() {
@@ -6161,10 +6158,10 @@ void emitDelete() {
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context ID
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-    emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_DELETE);
-    emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_DELETE);
+  emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
 
-    emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
+  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
 }
 
 void doDelete(int ID) {
@@ -6219,10 +6216,10 @@ void emitMap() {
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context ID
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-    emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_MAP);
-    emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_MAP);
+  emitRFormat(OP_SPECIAL, 0, 0, 0, 0, FCT_SYSCALL);
 
-    emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
+  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, 0, FCT_JR);
 }
 
 void doMap(int ID, int page, int frame) {
@@ -6451,7 +6448,7 @@ void fct_sll() {
         	print((int*) ",");
        		printRegister(rt);
         	print((int*) ",");
-			print((int*) "shamt");
+			    print((int*) "shamt");
         	if (interpret) {
            		print((int*) ": ");
             	printRegister(rd);
@@ -6462,14 +6459,14 @@ void fct_sll() {
             	print((int*) "=");
             	print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
             	print((int*) ",");
-	    		print((int*) "shamt");
-	    		print((int*) "=");
+	    		    print((int*) "shamt");
+    	    		print((int*) "=");
             	print(itoa(shamt, string_buffer, 10, 0, 0));
         	}
     	}
 
     	if (interpret) {
-        	*(registers+rd) =  leftShift(*(registers+rt), shamt);
+        	*(registers+rd) = leftShift(*(registers+rt), shamt);
 
         	pc = pc + WORDSIZE;
     	}
@@ -6516,7 +6513,7 @@ void fct_srl() {
     }
 
     if (interpret) {
-        *(registers+rd) =  rightShift(*(registers+rt), shamt);
+        *(registers+rd) = rightShift(*(registers+rt), shamt);
 
         pc = pc + WORDSIZE;
     }
@@ -6558,7 +6555,7 @@ void fct_sllv() {
     }
 
     if (interpret) {
-        *(registers+rd) =  leftShift(*(registers+rt), *(registers+rs));
+        *(registers+rd) = leftShift(*(registers+rt), *(registers+rs));
 
         pc = pc + WORDSIZE;
     }
@@ -6600,7 +6597,7 @@ void fct_srlv() {
     }
 
     if (interpret) {
-        *(registers+rd) =  rightShift(*(registers+rt), *(registers+rs));
+        *(registers+rd) = rightShift(*(registers+rt), *(registers+rs));
 
         pc = pc + WORDSIZE;
     }
@@ -8050,10 +8047,10 @@ int main(int argc, int* argv) {
   argv = argv + 1;
 
     println();
-    print((int*)"   This is datTeam Selfie");	// output the name of our team
+    print((int*)"   This is datTeam Selfie");	  // output the name of our team
     println();                                  //D stands for Daniela
     println();                                  //A for Aziz
-						                        //T for Tarek
+						                                    //T for Tarek
 
     if (selfie(argc, (int*) argv) != 0) {       
         print(selfieName);
