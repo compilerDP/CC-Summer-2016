@@ -8039,7 +8039,7 @@ int main(int argc, int* argv) {
   initRegister();
   initDecoder();
 
-  initInterpreter();
+  initInterpreter(); 
 
   selfieName = (int*) *argv;
 
